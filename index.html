@@ -374,7 +374,7 @@ function scheduleBeep(at, freq) {
   var c = getCtx();
   var o = c.createOscillator(), g = c.createGain();
   o.type = 'square'; o.frequency.value = freq || 1400;
-  var v = (S.vol / 100) * 0.5;
+  var v = (S.vol / 100) * 0.65; // +30 % par rapport à 0,5
   g.gain.setValueAtTime(0, at);
   g.gain.linearRampToValueAtTime(v, at + 0.005);
   g.gain.setValueAtTime(v, at + BEEP_DUR - 0.01);

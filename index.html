@@ -101,6 +101,7 @@ input[type=checkbox]{width:24px;height:24px;accent-color:var(--ink);margin:0;fle
 .toggle label{font-size:14px}
 .outline{height:52px;border:1px solid var(--ink);background:var(--bg);font-family:var(--display);font-size:18px;letter-spacing:.1em;cursor:pointer}
 .outline.on{background:var(--ink);color:#fff}
+.outline:disabled{opacity:.35;cursor:default}
 .meter{display:none;flex-direction:column;gap:6px}
 .meter.on{display:flex}
 .meter .bar{height:14px;background:var(--soft);position:relative;overflow:hidden}
@@ -243,6 +244,10 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
           <input id="s-dry" type="checkbox">
         </div>
         <button type="button" class="outline" id="s-test">TESTER LE MICRO</button>
+        <div class="toggle">
+          <div><span style="font-size:14px;font-weight:700" id="s-micstate">Micro coupé</span><small>Le micro se rouvre au prochain Départ (sauf en tir à sec)</small></div>
+          <button type="button" class="outline" id="s-micoff" style="height:44px;padding:0 14px;font-size:15px;flex:none">COUPER LE MICRO</button>
+        </div>
         <div class="meter" id="s-meter">
           <div class="bar" id="s-bar"><i id="s-lvl"></i><u id="s-th"></u></div>
           <div class="row"><span>Niveau · trait = seuil</span><span id="s-hits">0 détection</span></div>
@@ -302,7 +307,25 @@ function threshold() { return 0.92 - (S.sens / 100) * 0.84; } // amplitude crêt
 function deadTime() { return S.echo / 100; }
 
 /* ---------- Audio ---------- */
-var ctx = null, mic = null, micNode = null, micReady = null;
+var ctx = null, mic = null, micNode = null, micReady = null, micStream = null, micSink = null;
+
+// Coupe complètement le micro : libère le flux (l'indicateur orange d'iOS disparaît).
+function releaseMic() {
+  try { if (micNode) { if (micNode.port) micNode.port.onmessage = null; micNode.onaudioprocess = null; micNode.disconnect(); } } catch (e) {}
+  try { if (mic) mic.disconnect(); } catch (e) {}
+  try { if (micSink) micSink.disconnect(); } catch (e) {}
+  if (micStream) micStream.getTracks().forEach(function (t) { t.stop(); });
+  mic = micNode = micStream = micSink = null; micReady = null;
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+  renderMicState();
+}
+function renderMicState() {
+  var on = !!micStream, b = document.getElementById('s-micoff'), s = document.getElementById('s-micstate');
+  if (!b) return;
+  b.disabled = !on;
+  s.textContent = on ? 'Micro actif' : 'Micro coupé';
+  s.style.color = on ? 'var(--ink)' : 'var(--mute)';
+}
 var hitListener = null, levelListener = null;
 
 function getCtx() {
@@ -337,8 +360,10 @@ function ensureMic() {
   micReady = navigator.mediaDevices.getUserMedia({
     audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
   }).then(function (stream) {
+    micStream = stream;
     mic = c.createMediaStreamSource(stream);
     var sink = c.createGain(); sink.gain.value = 0; sink.connect(c.destination);
+    micSink = sink;
     if (c.audioWorklet) {
       var url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
       return c.audioWorklet.addModule(url).then(function () {
@@ -346,6 +371,7 @@ function ensureMic() {
         micNode.port.onmessage = function (e) { onDetectorMsg(e.data); };
         mic.connect(micNode); micNode.connect(sink);
         pushParams();
+        renderMicState();
       });
     }
     // Repli : ScriptProcessor
@@ -360,6 +386,7 @@ function ensureMic() {
       n += ch.length; if (n >= 1024) { onDetectorMsg({ lvl: pk }); pk = 0; n = 0; }
     };
     micNode = sp; mic.connect(sp); sp.connect(sink);
+    renderMicState();
   }).catch(function (err) {
     micReady = null;
     throw new Error(err && err.name === 'NotAllowedError'
@@ -697,6 +724,12 @@ $('s-test').onclick = function () {
   }).catch(function (e) { err.textContent = e.message; err.classList.add('on'); });
 };
 
+$('s-micoff').onclick = function () {
+  if (testing) stopTest();
+  if (active) active.stopRun();
+  releaseMic();
+};
+
 /* ---------- Navigation ---------- */
 function showTab(name) {
   if (active) active.stopRun();
@@ -720,6 +753,7 @@ document.addEventListener('visibilitychange', function () {
 
 /* ---------- Init ---------- */
 renderSettings();
+renderMicState();
 renderList();
 C._n = -1; C.reset();
 var h = (location.hash || '').slice(1);

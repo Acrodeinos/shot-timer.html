@@ -102,6 +102,8 @@ input[type=checkbox]{width:24px;height:24px;accent-color:var(--ink);margin:0;fle
 .outline{height:52px;border:1px solid var(--ink);background:var(--bg);font-family:var(--display);font-size:18px;letter-spacing:.1em;cursor:pointer}
 .outline.on{background:var(--ink);color:#fff}
 .outline:disabled{opacity:.35;cursor:default}
+.auth{margin:14px 24px 0;padding:14px 16px;background:var(--soft);display:flex;flex-direction:column;gap:10px}
+.auth p{margin:0;font-size:13px;line-height:1.45;color:var(--ink2)}
 .meter{display:none;flex-direction:column;gap:6px}
 .meter.on{display:flex}
 .meter .bar{height:14px;background:var(--soft);position:relative;overflow:hidden}
@@ -140,6 +142,10 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
     <p class="hint" id="c-hint">Appuie sur Départ, attends le bip, puis tire. Le micro compte chaque coup ; appuie sur Stop à la fin.</p>
     <div class="splits" id="c-splits"></div>
     <p class="err" id="c-err"></p>
+    <div class="auth" id="c-auth" hidden>
+      <p>Le micro est coupé. Autorise-le à nouveau pour lancer le chrono.</p>
+      <button type="button" class="outline" data-auth="c">AUTORISER LE MICRO</button>
+    </div>
     <div class="grow"></div>
     <div class="actions">
       <button type="button" class="sq" id="c-reset" aria-label="Réinitialiser">
@@ -185,6 +191,10 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
       </section>
       <div class="splits" id="d-splits"></div>
       <p class="err" id="d-err"></p>
+      <div class="auth" id="d-auth" hidden>
+        <p>Le micro est coupé. Autorise-le à nouveau pour lancer le chrono.</p>
+        <button type="button" class="outline" data-auth="d">AUTORISER LE MICRO</button>
+      </div>
       <div class="grow"></div>
       <div class="actions">
         <button type="button" class="sq" id="d-reset" aria-label="Réinitialiser">
@@ -227,6 +237,10 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
           <div class="row"><label for="s-vol">Volume du bip</label><b id="s-vol-v"></b></div>
           <input id="s-vol" type="range" min="10" max="100" step="5">
         </div>
+        <div class="field">
+          <div class="row"><label for="s-tone">Tonalité du bip</label><b id="s-tone-v"></b></div>
+          <input id="s-tone" type="range" min="1200" max="3200" step="100">
+        </div>
       </section>
 
       <section class="group">
@@ -245,7 +259,7 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
         </div>
         <button type="button" class="outline" id="s-test">TESTER LE MICRO</button>
         <div class="toggle">
-          <div><span style="font-size:14px;font-weight:700" id="s-micstate">Micro coupé</span><small>Le micro se rouvre au prochain Départ (sauf en tir à sec)</small></div>
+          <div><span style="font-size:14px;font-weight:700" id="s-micstate">Micro coupé</span><small>Une fois coupé, il faudra l'autoriser à nouveau pour relancer le chrono</small></div>
           <button type="button" class="outline" id="s-micoff" style="height:44px;padding:0 14px;font-size:15px;flex:none">COUPER LE MICRO</button>
         </div>
         <div class="meter" id="s-meter">
@@ -287,7 +301,7 @@ var DRILLS = [
   { name: "Recharg. à genou", shots: 2, par: 4.0, meta: "2 coups · genou à terre", desc: "1 cartouche engagée, chargeur vide en place. Tirer 1 balle, poser un genou au sol, recharger, tirer 1 balle à genou." }
 ];
 
-var BEEP_DUR = 0.28;      // durée du bip (s)
+var BEEP_DUR = 0.4;       // durée du bip (s) : plus long = perçu plus fort
 var BEEP_GUARD = 0.06;    // marge après le bip où le micro est ignoré
 var MAX_TIME = 99.99;
 var IDLE_TIMEOUT = 5;     // arrêt auto après 5 s sans tir détecté
@@ -296,7 +310,7 @@ var IDLE_TIMEOUT = 5;     // arrêt auto après 5 s sans tir détecté
 function load(k, d) { try { var v = localStorage.getItem(k); return v ? Object.assign({}, d, JSON.parse(v)) : d; } catch (e) { return d; } }
 function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 
-var S = load('shottimer.settings', { delay: 4, par: 2.5, parBeep: true, vol: 80, sens: 62, echo: 8, dry: false });
+var S = load('shottimer.settings', { delay: 4, par: 2.5, parBeep: true, vol: 80, tone: 2000, sens: 62, echo: 8, dry: false });
 var R = load('shottimer.results', {});
 
 /* ---------- Utilitaires ---------- */
@@ -409,7 +423,8 @@ function scheduleBeep(at, freq) {
   // Sans micro (tir à sec) : session « lecture » = haut-parleur, même en mode silencieux.
   if (S.dry && !mic) { try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {} }
   var o = c.createOscillator(), g = c.createGain();
-  o.type = 'square'; o.frequency.value = freq || 1400;
+  // 3 kHz : zone où le haut-parleur de l'iPhone et l'oreille sont les plus efficaces (bips de shot timer classiques).
+  o.type = 'square'; o.frequency.value = freq || S.tone;
   var v = beepGain();
   g.gain.setValueAtTime(0, at);
   g.gain.linearRampToValueAtTime(v, at + 0.005);
@@ -438,7 +453,7 @@ function Timer(opts) {
 }
 Timer.prototype.reset = function () {
   this.cancel();
-  this.phase = 'idle'; this.elapsed = 0; this.shots = []; this.err = ''; this.timedOut = false;
+  this.phase = 'idle'; this.elapsed = 0; this.shots = []; this.err = ''; this.timedOut = false; this.needMic = false;
   this.o.onUpdate(this);
 };
 Timer.prototype.cancel = function () {
@@ -454,7 +469,7 @@ Timer.prototype.start = function () {
   if (active && active !== this) active.stopRun();
   this.cancel();
   var c = getCtx();
-  this.phase = 'wait'; this.elapsed = 0; this.shots = []; this.err = ''; this.timedOut = false;
+  this.phase = 'wait'; this.elapsed = 0; this.shots = []; this.err = ''; this.timedOut = false; this.needMic = false;
   active = this;
   this.o.onUpdate(this);
   keepAwake(true);
@@ -467,12 +482,17 @@ Timer.prototype.start = function () {
     self.oscs.push(scheduleBeep(self.t0));
     var par = self.o.par();
     self.parAt = (S.parBeep && par > 0) ? self.t0 + par : null;
-    if (self.parAt) self.oscs.push(scheduleBeep(self.parAt, 1000));
+    if (self.parAt) self.oscs.push(scheduleBeep(self.parAt, Math.round(S.tone * 0.8)));
     hitListener = function (t) { self.hit(t); };
     self.loop();
   };
 
   if (S.dry) { go(); }
+  else if (S.micBlocked) {
+    // Micro coupé volontairement : il faut une nouvelle autorisation explicite.
+    this.phase = 'idle'; this.needMic = true; active = null; keepAwake(false);
+    this.o.onUpdate(this);
+  }
   else {
     ensureMic().then(function () { pushParams(); go(); }).catch(function (e) {
       self.phase = 'idle'; self.err = e.message; active = null; keepAwake(false);
@@ -581,6 +601,7 @@ var C = new Timer({
       ? "Mode tir à sec : appuie sur Départ, attends le bip, puis tape sur le chrono à chaque clic. Stop à la fin."
       : "Appuie sur Départ, attends le bip, puis tire. Le micro compte chaque coup ; appuie sur Stop à la fin.";
     var e = $('c-err'); e.textContent = t.err; e.classList.toggle('on', !!t.err);
+    $('c-auth').hidden = !t.needMic;
     setMain($('c-main'), t.running());
     $('c-clock').disabled = !(S.dry && t.phase === 'run');
     $('c-clock').classList.toggle('tap', S.dry && t.phase === 'run');
@@ -611,6 +632,7 @@ var D = new Timer({
     $('d-first').textContent = t.shots.length ? fmt(t.shots[0]) : '—';
     if (t._n !== t.shots.length) { renderSplits($('d-splits'), t.shots); t._n = t.shots.length; }
     var e = $('d-err'); e.textContent = t.err; e.classList.toggle('on', !!t.err);
+    $('d-auth').hidden = !t.needMic;
     setMain($('d-main'), t.running());
     $('d-clock').disabled = !(S.dry && t.phase === 'run');
     $('d-clock').classList.toggle('tap', S.dry && t.phase === 'run');
@@ -675,6 +697,8 @@ function renderSettings() {
   $('s-par-v').textContent = S.par > 0 ? fmt(S.par) : 'OFF';
   $('s-parbeep').checked = S.parBeep;
   $('s-vol').value = S.vol; $('s-vol-v').textContent = S.vol + ' %';
+  $('s-tone').value = S.tone;
+  $('s-tone-v').textContent = (S.tone < 1800 ? 'Grave' : S.tone <= 2400 ? 'Médium' : 'Aigu') + ' · ' + S.tone + ' Hz';
   $('s-sens').value = S.sens; $('s-sens-v').textContent = sensLabel(+S.sens);
   $('s-echo').value = S.echo; $('s-echo-v').textContent = fmt(S.echo / 100) + ' s';
   $('s-dry').checked = S.dry;
@@ -684,6 +708,8 @@ function setS(k, v) { S[k] = v; save('shottimer.settings', S); renderSettings();
 $('s-delay').oninput = function () { setS('delay', +this.value); };
 $('s-vol').oninput = function () { setS('vol', +this.value); };
 $('s-vol').onchange = function () { var c = getCtx(); scheduleBeep(c.currentTime + 0.05); };
+$('s-tone').oninput = function () { setS('tone', +this.value); };
+$('s-tone').onchange = function () { var c = getCtx(); scheduleBeep(c.currentTime + 0.05); };
 $('s-sens').oninput = function () { setS('sens', +this.value); };
 $('s-echo').oninput = function () { setS('echo', +this.value); };
 $('s-parbeep').onchange = function () { setS('parBeep', this.checked); };
@@ -708,6 +734,7 @@ function stopTest() {
 $('s-test').onclick = function () {
   if (testing) { stopTest(); return; }
   var err = $('s-err'); err.classList.remove('on');
+  S.micBlocked = false; save('shottimer.settings', S);
   ensureMic().then(function () {
     pushParams();
     testing = true; testHits = 0;
@@ -728,7 +755,16 @@ $('s-micoff').onclick = function () {
   if (testing) stopTest();
   if (active) active.stopRun();
   releaseMic();
+  S.micBlocked = true; save('shottimer.settings', S);
 };
+// Nouvelle autorisation : lève le blocage puis relance (Safari redemande l'accès s'il est réglé sur « Demander »).
+document.querySelectorAll('[data-auth]').forEach(function (b) {
+  b.onclick = function () {
+    S.micBlocked = false; save('shottimer.settings', S);
+    var t = b.getAttribute('data-auth') === 'c' ? C : D;
+    t.needMic = false; t.start();
+  };
+});
 
 /* ---------- Navigation ---------- */
 function showTab(name) {

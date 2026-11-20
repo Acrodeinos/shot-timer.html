@@ -222,16 +222,8 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
           <div class="row"><label for="s-delay">Délai aléatoire avant le bip</label><b id="s-delay-v"></b></div>
           <input id="s-delay" type="range" min="0" max="6" step="0.5">
         </div>
-        <div class="row" style="font-size:14px">
-          <span>Temps limite (par) · chrono libre</span>
-          <div class="stepper">
-            <button type="button" id="s-par-m" aria-label="Diminuer le par">−</button>
-            <span id="s-par-v"></span>
-            <button type="button" id="s-par-p" aria-label="Augmenter le par">+</button>
-          </div>
-        </div>
         <div class="toggle">
-          <label for="s-parbeep">Bip à la fin du par</label>
+          <label for="s-parbeep">Bip à la fin du par (Drills)</label>
           <input id="s-parbeep" type="checkbox">
         </div>
         <div class="field">
@@ -618,7 +610,7 @@ function setMain(btn, running) {
 
 /* ---------- Écran Chrono libre ---------- */
 var C = new Timer({
-  par: function () { return S.par; },
+  par: function () { return 0; }, // pas de par en chrono libre
   maxShots: null,
   onUpdate: function (t) {
     var labels = { idle: 'PRÊT', wait: 'ATTENTION…', run: 'EN COURS', done: 'TERMINÉ', stopped: 'TERMINÉ' };
@@ -628,10 +620,8 @@ var C = new Timer({
     st.style.color = (t.phase === 'idle' || t.phase === 'wait') ? 'var(--sand)' : 'var(--ink)';
     var tm = $('c-time'); tm.textContent = fmt(t.elapsed);
     tm.classList.toggle('long', t.elapsed >= 10);
-    tm.style.color = (S.par > 0 && t.elapsed > S.par && t.phase !== 'idle') ? 'var(--sand)' : '';
     $('c-count').textContent = String(t.shots.length);
     $('c-first').textContent = t.shots.length ? fmt(t.shots[0]) : '—';
-    $('c-parlbl').textContent = S.par > 0 ? 'TEMPS TOTAL · PAR ' + fmt(S.par) + ' S' : 'TEMPS TOTAL';
     if (t._n !== t.shots.length) { renderSplits($('c-splits'), t.shots); t._n = t.shots.length; }
     $('c-hint').style.display = t.shots.length ? 'none' : '';
     $('c-hint').textContent = S.dry
@@ -729,7 +719,6 @@ function sensLabel(v) { return (v < 34 ? 'Faible' : v < 67 ? 'Moyenne' : 'Élev�
 function renderSettings() {
   $('s-delay').value = S.delay;
   $('s-delay-v').textContent = S.delay <= 0 ? 'Immédiat' : S.delay <= 1.5 ? fmt1(S.delay) + ' s' : '1,5 – ' + fmt1(S.delay) + ' s';
-  $('s-par-v').textContent = S.par > 0 ? fmt(S.par) : 'OFF';
   $('s-parbeep').checked = S.parBeep;
   $('s-vol').value = S.vol; $('s-vol-v').textContent = S.vol > 0 ? S.vol + ' %' : 'Muet';
   $('s-tone').value = S.tone;
@@ -749,15 +738,6 @@ $('s-sens').oninput = function () { setS('sens', +this.value); };
 $('s-echo').oninput = function () { setS('echo', +this.value); };
 $('s-parbeep').onchange = function () { setS('parBeep', this.checked); };
 $('s-dry').onchange = function () { setS('dry', this.checked); };
-function stepPar(d) { setS('par', Math.max(0, Math.min(30, Math.round((S.par + d) * 100) / 100))); }
-var rep = null;
-function holdBtn(btn, d) {
-  var startHold = function (e) { e.preventDefault(); stepPar(d); var n = 0; rep = setInterval(function () { n++; if (n > 4) stepPar(d); }, 90); };
-  var end = function () { clearInterval(rep); rep = null; };
-  btn.addEventListener('pointerdown', startHold);
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { btn.addEventListener(ev, end); });
-}
-holdBtn($('s-par-m'), -0.05); holdBtn($('s-par-p'), 0.05);
 
 var testing = false, testHits = 0, flashT = 0;
 function stopTest() {

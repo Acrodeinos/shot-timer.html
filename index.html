@@ -102,8 +102,6 @@ input[type=checkbox]{width:24px;height:24px;accent-color:var(--ink);margin:0;fle
 .outline{height:52px;border:1px solid var(--ink);background:var(--bg);font-family:var(--display);font-size:18px;letter-spacing:.1em;cursor:pointer}
 .outline.on{background:var(--ink);color:#fff}
 .outline:disabled{opacity:.35;cursor:default}
-.auth{margin:14px 24px 0;padding:14px 16px;background:var(--soft);display:flex;flex-direction:column;gap:10px}
-.auth p{margin:0;font-size:13px;line-height:1.45;color:var(--ink2)}
 .meter{display:none;flex-direction:column;gap:6px}
 .meter.on{display:flex}
 .meter .bar{height:14px;background:var(--soft);position:relative;overflow:hidden}
@@ -142,10 +140,6 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
     <p class="hint" id="c-hint">Appuie sur Départ, attends le bip, puis tire. Le micro compte chaque coup ; appuie sur Stop à la fin.</p>
     <div class="splits" id="c-splits"></div>
     <p class="err" id="c-err"></p>
-    <div class="auth" id="c-auth" hidden>
-      <p>Le micro est coupé. Autorise-le à nouveau pour lancer le chrono.</p>
-      <button type="button" class="outline" data-auth="c">AUTORISER LE MICRO</button>
-    </div>
     <div class="grow"></div>
     <div class="actions">
       <button type="button" class="sq" id="c-reset" aria-label="Réinitialiser">
@@ -191,10 +185,6 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
       </section>
       <div class="splits" id="d-splits"></div>
       <p class="err" id="d-err"></p>
-      <div class="auth" id="d-auth" hidden>
-        <p>Le micro est coupé. Autorise-le à nouveau pour lancer le chrono.</p>
-        <button type="button" class="outline" data-auth="d">AUTORISER LE MICRO</button>
-      </div>
       <div class="grow"></div>
       <div class="actions">
         <button type="button" class="sq" id="d-reset" aria-label="Réinitialiser">
@@ -259,7 +249,7 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
         </div>
         <button type="button" class="outline" id="s-test">TESTER LE MICRO</button>
         <div class="toggle">
-          <div><span style="font-size:14px;font-weight:700" id="s-micstate">Micro coupé</span><small>Une fois coupé, il faudra l'autoriser à nouveau pour relancer le chrono</small></div>
+          <div><span style="font-size:14px;font-weight:700" id="s-micstate">Micro coupé</span><small>L'accès sera redemandé au prochain Départ</small></div>
           <button type="button" class="outline" id="s-micoff" style="height:44px;padding:0 14px;font-size:15px;flex:none">COUPER LE MICRO</button>
         </div>
         <div class="meter" id="s-meter">
@@ -453,7 +443,7 @@ function Timer(opts) {
 }
 Timer.prototype.reset = function () {
   this.cancel();
-  this.phase = 'idle'; this.elapsed = 0; this.shots = []; this.err = ''; this.timedOut = false; this.needMic = false;
+  this.phase = 'idle'; this.elapsed = 0; this.shots = []; this.err = ''; this.timedOut = false;
   this.o.onUpdate(this);
 };
 Timer.prototype.cancel = function () {
@@ -469,7 +459,7 @@ Timer.prototype.start = function () {
   if (active && active !== this) active.stopRun();
   this.cancel();
   var c = getCtx();
-  this.phase = 'wait'; this.elapsed = 0; this.shots = []; this.err = ''; this.timedOut = false; this.needMic = false;
+  this.phase = 'wait'; this.elapsed = 0; this.shots = []; this.err = ''; this.timedOut = false;
   active = this;
   this.o.onUpdate(this);
   keepAwake(true);
@@ -488,11 +478,6 @@ Timer.prototype.start = function () {
   };
 
   if (S.dry) { go(); }
-  else if (S.micBlocked) {
-    // Micro coupé volontairement : il faut une nouvelle autorisation explicite.
-    this.phase = 'idle'; this.needMic = true; active = null; keepAwake(false);
-    this.o.onUpdate(this);
-  }
   else {
     ensureMic().then(function () { pushParams(); go(); }).catch(function (e) {
       self.phase = 'idle'; self.err = e.message; active = null; keepAwake(false);
@@ -601,7 +586,6 @@ var C = new Timer({
       ? "Mode tir à sec : appuie sur Départ, attends le bip, puis tape sur le chrono à chaque clic. Stop à la fin."
       : "Appuie sur Départ, attends le bip, puis tire. Le micro compte chaque coup ; appuie sur Stop à la fin.";
     var e = $('c-err'); e.textContent = t.err; e.classList.toggle('on', !!t.err);
-    $('c-auth').hidden = !t.needMic;
     setMain($('c-main'), t.running());
     $('c-clock').disabled = !(S.dry && t.phase === 'run');
     $('c-clock').classList.toggle('tap', S.dry && t.phase === 'run');
@@ -632,7 +616,6 @@ var D = new Timer({
     $('d-first').textContent = t.shots.length ? fmt(t.shots[0]) : '—';
     if (t._n !== t.shots.length) { renderSplits($('d-splits'), t.shots); t._n = t.shots.length; }
     var e = $('d-err'); e.textContent = t.err; e.classList.toggle('on', !!t.err);
-    $('d-auth').hidden = !t.needMic;
     setMain($('d-main'), t.running());
     $('d-clock').disabled = !(S.dry && t.phase === 'run');
     $('d-clock').classList.toggle('tap', S.dry && t.phase === 'run');
@@ -734,7 +717,6 @@ function stopTest() {
 $('s-test').onclick = function () {
   if (testing) { stopTest(); return; }
   var err = $('s-err'); err.classList.remove('on');
-  S.micBlocked = false; save('shottimer.settings', S);
   ensureMic().then(function () {
     pushParams();
     testing = true; testHits = 0;
@@ -754,17 +736,8 @@ $('s-test').onclick = function () {
 $('s-micoff').onclick = function () {
   if (testing) stopTest();
   if (active) active.stopRun();
-  releaseMic();
-  S.micBlocked = true; save('shottimer.settings', S);
+  releaseMic(); // le prochain Départ refait une demande d'accès au micro
 };
-// Nouvelle autorisation : lève le blocage puis relance (Safari redemande l'accès s'il est réglé sur « Demander »).
-document.querySelectorAll('[data-auth]').forEach(function (b) {
-  b.onclick = function () {
-    S.micBlocked = false; save('shottimer.settings', S);
-    var t = b.getAttribute('data-auth') === 'c' ? C : D;
-    t.needMic = false; t.start();
-  };
-});
 
 /* ---------- Navigation ---------- */
 function showTab(name) {

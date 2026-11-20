@@ -156,10 +156,9 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
         <h1>Marshall Qual</h1>
         <p class="lede">Une seule série par exercice. Touche un exercice pour lancer le chrono.</p>
       </header>
-      <section class="stats c3" style="margin-top:16px">
+      <section class="stats c3" style="margin-top:16px;grid-template-columns:repeat(2,minmax(0,1fr))">
         <div><span class="k">RÉUSSIS</span><span class="v" id="d-ok">0/7</span></div>
-        <div><span class="k">CUMUL</span><span class="v" id="d-sum">—</span></div>
-        <div><span class="k">PAR TOTAL</span><span class="v" id="d-par">—</span></div>
+        <div><span class="k">TEMPS TOTAL</span><span class="v" id="d-sum">—</span></div>
       </section>
       <div class="list" id="d-items"></div>
       <button type="button" class="clearbtn" id="d-clear">EFFACER LES RÉSULTATS</button>
@@ -370,11 +369,21 @@ function ensureMic() {
   return micReady;
 }
 
+// Volume du bip. Référence : le maximum du projet d'origine (gain 0,5).
+// 30 % du curseur = origine + 1/3 (0,667) ; 100 % = pleine échelle numérique (1,0),
+// soit le double du maximum d'origine. Au-delà de 1,0 le son saturerait sans être plus fort.
+function beepGain() {
+  var v = S.vol, base = 0.5 * 4 / 3;
+  return v <= 30 ? base * v / 30 : base + (1 - base) * (v - 30) / 70;
+}
+
 function scheduleBeep(at, freq) {
   var c = getCtx();
+  // Sans micro (tir à sec) : session « lecture » = haut-parleur, même en mode silencieux.
+  if (S.dry && !mic) { try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {} }
   var o = c.createOscillator(), g = c.createGain();
   o.type = 'square'; o.frequency.value = freq || 1400;
-  var v = (S.vol / 100) * 0.65; // +30 % par rapport à 0,5
+  var v = beepGain();
   g.gain.setValueAtTime(0, at);
   g.gain.linearRampToValueAtTime(v, at + 0.005);
   g.gain.setValueAtTime(v, at + BEEP_DUR - 0.01);
@@ -601,8 +610,7 @@ function renderList() {
   });
   $('d-items').innerHTML = h;
   $('d-ok').textContent = ok + '/' + DRILLS.length;
-  $('d-sum').textContent = done ? fmt(sum) : '—';
-  $('d-par').textContent = fmt(parSum);
+  $('d-sum').textContent = done ? fmt(sum) + ' s' : '—';
 }
 function openDrill(i) {
   D.cancel(); dIdx = i;

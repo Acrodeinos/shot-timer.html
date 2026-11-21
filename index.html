@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
@@ -102,6 +102,13 @@ input[type=checkbox]{width:24px;height:24px;accent-color:var(--ink);margin:0;fle
 .outline{height:52px;border:1px solid var(--ink);background:var(--bg);font-family:var(--display);font-size:18px;letter-spacing:.1em;cursor:pointer}
 .outline.on{background:var(--ink);color:#fff}
 .outline:disabled{opacity:.35;cursor:default}
+.calbox{background:var(--soft);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.calbox[hidden]{display:none}
+.calbox .row{font-size:14px}
+.calbox p{margin:0;font-size:13px;line-height:1.45;color:var(--ink2)}
+.caldots{display:flex;gap:6px}
+.caldots i{width:14px;height:14px;border:2px solid var(--ink);border-radius:50%}
+.caldots i.on{background:var(--ink)}
 .seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--ink)}
 .seg button{height:48px;border:none;background:var(--bg);font-family:var(--display);font-size:17px;letter-spacing:.1em;cursor:pointer}
 .seg button+button{border-left:1px solid var(--ink)}
@@ -140,26 +147,26 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
   <!-- ============ CHRONO LIBRE ============ -->
   <main class="view on" id="v-chrono">
     <header class="top">
-      <span class="kicker">FREE TIMER</span>
+      <span class="kicker">CHRONO LIBRE</span>
       <h1>Shot Timer</h1>
     </header>
     <button type="button" class="clock" id="c-clock" disabled>
-      <span class="row"><span class="status" id="c-status">READY</span><span class="lbl" id="c-parlbl">TOTAL TIME</span></span>
-      <span class="time" id="c-time">0.00</span>
+      <span class="row"><span class="status" id="c-status">PRÊT</span><span class="lbl" id="c-parlbl">TEMPS TOTAL</span></span>
+      <span class="time" id="c-time">0,00</span>
     </button>
     <section class="stats c2">
-      <div><span class="k">SHOTS</span><span class="v" id="c-count">0</span></div>
-      <div><span class="k">FIRST SHOT</span><span class="v" id="c-first">—</span></div>
+      <div><span class="k">NOMBRE DE TIRS</span><span class="v" id="c-count">0</span></div>
+      <div><span class="k">1ER TIR</span><span class="v" id="c-first">—</span></div>
     </section>
-    <p class="hint" id="c-hint">Press Start, wait for the beep, then shoot. The mic counts every shot; press Stop when you're done.</p>
+    <p class="hint" id="c-hint">Appuie sur Départ, attends le bip, puis tire. Le micro compte chaque coup ; appuie sur Stop à la fin.</p>
     <div class="splits" id="c-splits"></div>
     <p class="err" id="c-err"></p>
     <div class="grow"></div>
     <div class="actions">
-      <button type="button" class="sq" id="c-reset" aria-label="Reset">
+      <button type="button" class="sq" id="c-reset" aria-label="Réinitialiser">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
       </button>
-      <button type="button" class="main" id="c-main">START</button>
+      <button type="button" class="main" id="c-main">DÉPART</button>
     </div>
   </main>
 
@@ -167,16 +174,16 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
   <main class="view" id="v-drills">
     <div class="sub on" id="d-list">
       <header class="top">
-        <span class="kicker">AIR MARSHAL COURSE · TPC</span>
+        <span class="kicker">PARCOURS AIR MARSHAL · TPC</span>
         <h1>Marshall Qual</h1>
-        <p class="lede">One string per drill. Tap a drill to start the timer.</p>
+        <p class="lede">Une seule série par exercice. Touche un exercice pour lancer le chrono.</p>
       </header>
       <section class="stats c3" style="margin-top:16px;grid-template-columns:repeat(2,minmax(0,1fr))">
-        <div><span class="k">PASSED</span><span class="v" id="d-ok">0/7</span></div>
-        <div><span class="k">TOTAL TIME</span><span class="v" id="d-sum">—</span></div>
+        <div><span class="k">RÉUSSIS</span><span class="v" id="d-ok">0/7</span></div>
+        <div><span class="k">TEMPS TOTAL</span><span class="v" id="d-sum">—</span></div>
       </section>
       <div class="list" id="d-items"></div>
-      <button type="button" class="clearbtn" id="d-clear">CLEAR RESULTS</button>
+      <button type="button" class="clearbtn" id="d-clear">EFFACER LES RÉSULTATS</button>
     </div>
 
     <div class="sub" id="d-ex">
@@ -189,23 +196,23 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
         <p class="desc" id="d-desc"></p>
       </header>
       <button type="button" class="clock" id="d-clock" style="margin-top:14px;padding-top:12px;gap:6px" disabled>
-        <span class="row"><span class="status" id="d-status">READY</span><span class="lbl" id="d-parlbl"></span></span>
-        <span class="time mid" id="d-time">0.00</span>
+        <span class="row"><span class="status" id="d-status">PRÊT</span><span class="lbl" id="d-parlbl"></span></span>
+        <span class="time mid" id="d-time">0,00</span>
         <span class="parbar" aria-hidden="true"><i id="d-bar"></i></span>
       </button>
       <section class="stats c2" style="margin-top:16px">
-        <div><span class="k">SHOTS</span><span class="v" id="d-count">0/1</span></div>
-        <div><span class="k">FIRST SHOT</span><span class="v" id="d-first">—</span></div>
+        <div><span class="k">NOMBRE DE TIRS</span><span class="v" id="d-count">0/1</span></div>
+        <div><span class="k">1ER TIR</span><span class="v" id="d-first">—</span></div>
       </section>
       <div class="splits" id="d-splits"></div>
       <p class="err" id="d-err"></p>
       <div class="grow"></div>
       <div class="actions">
-        <button type="button" class="sq" id="d-reset" aria-label="Reset">
+        <button type="button" class="sq" id="d-reset" aria-label="Réinitialiser">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
         </button>
-        <button type="button" class="main" id="d-main">START</button>
-        <button type="button" class="sq" id="d-next" aria-label="Next drill">
+        <button type="button" class="main" id="d-main">DÉPART</button>
+        <button type="button" class="sq" id="d-next" aria-label="Exercice suivant">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
         </button>
       </div>
@@ -216,71 +223,77 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
   <main class="view" id="v-reglages">
    <div class="sub on" id="r-main">
     <header class="top">
-      <span class="kicker">TIMER &amp; MIC</span>
-      <h1>Settings</h1>
+      <span class="kicker">CHRONO &amp; MICRO</span>
+      <h1>Réglages</h1>
     </header>
     <div class="settings">
       <section class="group">
-        <span class="kicker">LANGUAGE · LANGUE</span>
-        <div class="seg" role="group" aria-label="Language">
-          <button type="button" aria-pressed="false" data-lang="fr">FRANÇAIS</button>
-          <button type="button" aria-pressed="true">ENGLISH</button>
+        <span class="kicker">LANGUE · LANGUAGE</span>
+        <div class="seg" role="group" aria-label="Langue">
+          <button type="button" aria-pressed="true">FRANÇAIS</button>
+          <button type="button" aria-pressed="false" data-lang="en">ENGLISH</button>
         </div>
       </section>
 
       <section class="group">
-        <span class="kicker">START</span>
+        <span class="kicker">DÉPART</span>
         <div class="field">
-          <div class="row"><label for="s-delay">Random delay before the beep</label><b id="s-delay-v"></b></div>
+          <div class="row"><label for="s-delay">Délai aléatoire avant le bip</label><b id="s-delay-v"></b></div>
           <input id="s-delay" type="range" min="0" max="6" step="0.5">
         </div>
         <div class="toggle">
-          <label for="s-parbeep">Beep at par time (Drills)</label>
+          <label for="s-parbeep">Bip à la fin du par (Drills)</label>
           <input id="s-parbeep" type="checkbox">
         </div>
         <div class="field">
-          <div class="row"><label for="s-vol">Beep volume</label><b id="s-vol-v"></b></div>
+          <div class="row"><label for="s-vol">Volume du bip</label><b id="s-vol-v"></b></div>
           <input id="s-vol" type="range" min="0" max="100" step="5">
         </div>
         <div class="field">
-          <div class="row"><label for="s-tone">Beep tone</label><b id="s-tone-v"></b></div>
+          <div class="row"><label for="s-tone">Tonalité du bip</label><b id="s-tone-v"></b></div>
           <input id="s-tone" type="range" min="1200" max="3200" step="100">
         </div>
       </section>
 
       <section class="group">
-        <span class="kicker">SHOT DETECTION</span>
+        <span class="kicker">DÉTECTION DES TIRS</span>
         <div class="field">
-          <div class="row"><label for="s-sens">Mic sensitivity</label><b id="s-sens-v"></b></div>
+          <div class="row"><label for="s-sens">Sensibilité du micro</label><b id="s-sens-v"></b></div>
           <input id="s-sens" type="range" min="0" max="100">
         </div>
         <div class="field">
-          <div class="row"><label for="s-echo">Echo rejection delay</label><b id="s-echo-v"></b></div>
+          <div class="row"><label for="s-echo">Temps mort anti-écho</label><b id="s-echo-v"></b></div>
           <input id="s-echo" type="range" min="0" max="20">
         </div>
         <div class="toggle">
-          <div><label for="s-dry">Dry-fire mode</label><small>No mic: tap the screen on every trigger press</small></div>
+          <div><label for="s-dry">Mode tir à sec</label><small>Pas de micro : tu tapes l'écran à chaque clic</small></div>
           <input id="s-dry" type="checkbox">
         </div>
-        <button type="button" class="outline" id="s-test">TEST THE MIC</button>
+        <button type="button" class="outline" id="s-cal">CALIBRER LE MICRO</button>
+        <div class="calbox" id="s-calbox" hidden>
+          <div class="row"><b id="s-calstep">Silence…</b><span class="caldots" id="s-caldots"><i></i><i></i><i></i></span></div>
+          <p id="s-calmsg">Ne tire pas : mesure du bruit ambiant.</p>
+          <button type="button" class="outline" id="s-calcancel" style="height:44px;font-size:15px">ANNULER</button>
+        </div>
+        <button type="button" class="outline" id="s-test">TESTER LE MICRO</button>
         <div class="toggle">
-          <div><span style="font-size:14px;font-weight:700" id="s-micstate">Mic off</span><small>Access will be requested again on the next Start</small></div>
-          <button type="button" class="outline" id="s-micoff" style="height:44px;padding:0 14px;font-size:15px;flex:none">TURN MIC OFF</button>
+          <div><span style="font-size:14px;font-weight:700" id="s-micstate">Micro coupé</span><small>L'accès sera redemandé au prochain Départ</small></div>
+          <button type="button" class="outline" id="s-micoff" style="height:44px;padding:0 14px;font-size:15px;flex:none">COUPER LE MICRO</button>
         </div>
         <div class="meter" id="s-meter">
           <div class="bar" id="s-bar"><i id="s-lvl"></i><u id="s-th"></u></div>
-          <div class="row"><span>Level · line = threshold</span><span id="s-hits">0 detections</span></div>
+          <div class="row"><span>Niveau · trait = seuil</span><span id="s-hits">0 détection</span></div>
         </div>
         <p class="err" id="s-err" style="margin:0"></p>
       </section>
 
       <section class="tip">
-        <b>TIP</b>
-        <p>With electronic ear protection, keep the iPhone on your belt on your gun side: the mic picks up your shots better than those from the next lanes. If extra shots are counted, lower the sensitivity or raise the echo rejection delay.</p>
+        <b>CONSEIL</b>
+        <p>Avec un casque électronique, garde l'iPhone à la ceinture côté arme : le micro capte mieux le départ que les tirs des postes voisins. Si des coups sont comptés en trop, baisse la sensibilité ou augmente le temps mort.</p>
       </section>
 
       <button type="button" class="rowlink" id="r-open-credits">
-        <span>Credits</span>
+        <span>Crédits</span>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
       </button>
     </div>
@@ -289,27 +302,27 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
    <div class="sub" id="r-credits">
     <header class="top" style="gap:8px;padding-top:calc(env(safe-area-inset-top) + 16px)">
       <button type="button" class="linkbtn" id="r-back">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Settings
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Réglages
       </button>
-      <span class="kicker">ABOUT</span>
-      <h1>Credits</h1>
+      <span class="kicker">À PROPOS</span>
+      <h1>Crédits</h1>
     </header>
     <div class="settings">
       <section class="group">
-        <span class="kicker">CREATED BY</span>
+        <span class="kicker">CRÉATION</span>
         <p class="credit-name">Mathieu Kott</p>
-        <p class="desc">Design and creation of the Shot Timer app.</p>
+        <p class="desc">Conception et création de l'application Shot Timer.</p>
       </section>
       <section class="group">
-        <span class="kicker">ARTIFICIAL INTELLIGENCE</span>
-        <p class="desc">This app was built with the help of AI: <b>Claude</b>, Anthropic's assistant, contributed to the design and development.</p>
+        <span class="kicker">INTELLIGENCE ARTIFICIELLE</span>
+        <p class="desc">Cette application a été créée avec l'aide de l'IA : <b>Claude</b>, l'assistant d'Anthropic, a participé au design et au développement.</p>
       </section>
       <section class="group">
-        <span class="kicker">MARSHALL QUAL DRILLS</span>
-        <p class="desc">The drills on the Drills screen are based on the US Air Marshal pistol qualification as presented by GBRS Group.</p>
+        <span class="kicker">EXERCICES MARSHALL QUAL</span>
+        <p class="desc">Les exercices de l'écran Drills s'inspirent de la qualification au tir des US Air Marshals présentée par GBRS Group.</p>
         <a class="extlink" href="https://www.youtube.com/watch?v=G9xPJou3I1M" target="_blank" rel="noopener noreferrer">
           <span>
-            <b>Watch the video on YouTube</b>
+            <b>Voir la vidéo sur YouTube</b>
             <small>GBRS Group · U.S. Air Marshal Pistol Qual Course Humbles the Cadre</small>
           </span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
@@ -319,31 +332,34 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
    </div>
   </main>
 
-  <nav class="tabs" aria-label="Main navigation">
+  <nav class="tabs" aria-label="Navigation principale">
     <button type="button" data-tab="chrono" aria-current="page">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M9 2h6"/></svg>TIMER</button>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M9 2h6"/></svg>CHRONO</button>
     <button type="button" data-tab="drills">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>DRILLS</button>
     <button type="button" data-tab="reglages">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h9"/><path d="M19 6h1"/><path d="M4 12h3"/><path d="M13 12h7"/><path d="M4 18h11"/><circle cx="16" cy="6" r="2.5"/><circle cx="10" cy="12" r="2.5"/><circle cx="18" cy="18" r="2.5"/></svg>SETTINGS</button>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h9"/><path d="M19 6h1"/><path d="M4 12h3"/><path d="M13 12h7"/><path d="M4 18h11"/><circle cx="16" cy="6" r="2.5"/><circle cx="10" cy="12" r="2.5"/><circle cx="18" cy="18" r="2.5"/></svg>RÉGLAGES</button>
   </nav>
 </div>
 
 <script>
-/* ---------- Language: French version is the site's index ---------- */
+/* ---------- Langue : ouvre la version mémorisée (anglais = shot-timer-en.html) ---------- */
 var LANG_FILE = { fr: './', en: 'shot-timer-en.html' };
+(function () {
+  try { if (localStorage.getItem('shottimer.lang') === 'en') location.replace(LANG_FILE.en + location.hash); } catch (e) {}
+})();
 (function () {
 'use strict';
 
 /* ---------- Données ---------- */
 var DRILLS = [
-  { name: "Draw", shots: 1, par: 1.65, meta: "1 shot · from the holster", desc: "Draw and fire 1 round." },
-  { name: "Double", shots: 2, par: 1.35, meta: "2 shots · low ready", desc: "Gun held at low ready, pointed at the ground. Fire 2 rounds." },
-  { name: "Rapid fire", shots: 6, par: 3.0, meta: "6 shots · low ready", desc: "From low ready, fire 6 rounds in a row." },
-  { name: "Reload", shots: 2, par: 3.25, meta: "2 shots · reload", desc: "From low ready: fire 1 round, reload, then fire 1 round." },
-  { name: "Two targets", shots: 2, par: 1.65, meta: "2 shots · 2 targets", desc: "2 targets 3 yards (2.7 m) apart. From low ready, fire 1 round on each target." },
-  { name: "Turn & fire", shots: 3, par: 3.5, meta: "3 shots · 3 targets · back turned", desc: "Gun concealed, back to the 3 targets. Turn around and fire 1 round on each target." },
-  { name: "Kneeling reload", shots: 2, par: 4.0, meta: "2 shots · kneeling", desc: "1 round chambered, empty magazine inserted. Fire 1 round, drop to one knee, reload, fire 1 round kneeling." }
+  { name: "Dégainé", shots: 1, par: 1.65, meta: "1 coup · dégainé", desc: "Dégainer et tirer 1 balle." },
+  { name: "Doublé", shots: 2, par: 1.35, meta: "2 coups · arme basse", desc: "Arme tenue basse, pointée vers le sol. Tirer 2 balles." },
+  { name: "Rafale", shots: 6, par: 3.0, meta: "6 coups · arme basse", desc: "Depuis l'arme basse, tirer 6 balles d'affilée." },
+  { name: "Rechargement", shots: 2, par: 3.25, meta: "2 coups · rechargement", desc: "Depuis l'arme basse : tirer 1 balle, recharger, puis tirer 1 balle." },
+  { name: "Deux cibles", shots: 2, par: 1.65, meta: "2 coups · 2 cibles", desc: "2 cibles espacées de 3 yards (2,7 m). Depuis l'arme basse, tirer 1 balle sur chaque cible." },
+  { name: "Demi-tour", shots: 3, par: 3.5, meta: "3 coups · 3 cibles · dos tourné", desc: "Arme cachée, dos aux 3 cibles. Se retourner et tirer 1 balle sur chaque cible." },
+  { name: "Recharg. à genou", shots: 2, par: 4.0, meta: "2 coups · genou à terre", desc: "1 cartouche engagée, chargeur vide en place. Tirer 1 balle, poser un genou au sol, recharger, tirer 1 balle à genou." }
 ];
 
 var BEEP_DUR = 0.4;       // durée du bip (s) : plus long = perçu plus fort
@@ -360,8 +376,8 @@ var R = load('shottimer.results', {});
 
 /* ---------- Utilitaires ---------- */
 var $ = function (id) { return document.getElementById(id); };
-function fmt(v) { return v.toFixed(2); }
-function fmt1(v) { return (Math.round(v * 10) / 10).toString(); }
+function fmt(v) { return v.toFixed(2).replace('.', ','); }
+function fmt1(v) { return (Math.round(v * 10) / 10).toString().replace('.', ','); }
 // Seuil de détection (amplitude crête 0..1). Sensibilité de base +15 % sur toute la plage :
 // le seuil est divisé par 1,15, donc un son 15 % plus faible suffit pour compter un tir.
 var SENS_BOOST = 1.15;
@@ -385,7 +401,7 @@ function renderMicState() {
   var on = !!micStream, b = document.getElementById('s-micoff'), s = document.getElementById('s-micstate');
   if (!b) return;
   b.disabled = !on;
-  s.textContent = on ? 'Mic on' : 'Mic off';
+  s.textContent = on ? 'Micro actif' : 'Micro coupé';
   s.style.color = on ? 'var(--ink)' : 'var(--mute)';
 }
 var hitListener = null, levelListener = null;
@@ -415,8 +431,8 @@ function ensureMic() {
   var c = getCtx();
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     return Promise.reject(new Error(location.protocol === 'file:' || !window.isSecureContext
-      ? "Mic unavailable: Safari only allows the mic over https or on localhost. Turn on dry-fire mode, or serve the page from a local server."
-      : "This browser doesn't support the mic."));
+      ? "Micro indisponible : Safari n'autorise le micro qu'en https ou sur localhost. Active le mode tir à sec, ou sers la page via un petit serveur local."
+      : "Micro non pris en charge par ce navigateur."));
   }
   try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
   micReady = navigator.mediaDevices.getUserMedia({
@@ -452,8 +468,8 @@ function ensureMic() {
   }).catch(function (err) {
     micReady = null;
     throw new Error(err && err.name === 'NotAllowedError'
-      ? "Mic access denied. Allow it in Safari (aA › Website Settings › Microphone) or turn on dry-fire mode."
-      : (err && err.message) || "Couldn't open the mic.");
+      ? "Accès au micro refusé. Autorise-le dans Safari (aA › Réglages du site web › Micro) ou active le mode tir à sec."
+      : (err && err.message) || "Impossible d'ouvrir le micro.");
   });
   return micReady;
 }
@@ -615,13 +631,13 @@ function renderSplits(el, shots) {
   var h = '';
   for (var i = 0; i < shots.length; i++) {
     h += '<div class="chip"><b>#' + (i + 1) + '</b><span>' + fmt(shots[i]) + '</span><em>' +
-      (i === 0 ? 'first' : '+' + fmt(shots[i] - shots[i - 1])) + '</em></div>';
+      (i === 0 ? '1er tir' : '+' + fmt(shots[i] - shots[i - 1])) + '</em></div>';
   }
   el.innerHTML = h;
   el.scrollLeft = el.scrollWidth;
 }
 function setMain(btn, running) {
-  btn.textContent = running ? 'STOP' : 'START';
+  btn.textContent = running ? 'STOP' : 'DÉPART';
   btn.classList.toggle('run', running);
 }
 
@@ -630,10 +646,10 @@ var C = new Timer({
   par: function () { return 0; }, // pas de par en chrono libre
   maxShots: null,
   onUpdate: function (t) {
-    var labels = { idle: 'READY', wait: 'STAND BY…', run: 'RUNNING', done: 'DONE', stopped: 'DONE' };
+    var labels = { idle: 'PRÊT', wait: 'ATTENTION…', run: 'EN COURS', done: 'TERMINÉ', stopped: 'TERMINÉ' };
     var st = $('c-status');
-    st.textContent = (S.dry && t.phase === 'run') ? 'RUNNING · TAP ON EACH SHOT'
-      : (t.phase === 'stopped' && t.timedOut) ? (t.shots.length ? 'DONE · 5 S WITHOUT A SHOT' : 'NO SHOT DETECTED') : labels[t.phase];
+    st.textContent = (S.dry && t.phase === 'run') ? 'EN COURS · TAPE À CHAQUE TIR'
+      : (t.phase === 'stopped' && t.timedOut) ? (t.shots.length ? 'TERMINÉ · 5 S SANS TIR' : 'AUCUN TIR DÉTECTÉ') : labels[t.phase];
     st.style.color = (t.phase === 'idle' || t.phase === 'wait') ? 'var(--sand)' : 'var(--ink)';
     var tm = $('c-time'); tm.textContent = fmt(t.elapsed);
     tm.classList.toggle('long', t.elapsed >= 10);
@@ -642,8 +658,8 @@ var C = new Timer({
     if (t._n !== t.shots.length) { renderSplits($('c-splits'), t.shots); t._n = t.shots.length; }
     $('c-hint').style.display = t.shots.length ? 'none' : '';
     $('c-hint').textContent = S.dry
-      ? "Dry-fire mode: press Start, wait for the beep, then tap the timer on every trigger press. Press Stop when you're done."
-      : "Press Start, wait for the beep, then shoot. The mic counts every shot; press Stop when you're done.";
+      ? "Mode tir à sec : appuie sur Départ, attends le bip, puis tape sur le chrono à chaque clic. Stop à la fin."
+      : "Appuie sur Départ, attends le bip, puis tire. Le micro compte chaque coup ; appuie sur Stop à la fin.";
     var e = $('c-err'); e.textContent = t.err; e.classList.toggle('on', !!t.err);
     setMain($('c-main'), t.running());
     $('c-clock').disabled = !(S.dry && t.phase === 'run');
@@ -662,10 +678,10 @@ var D = new Timer({
   onUpdate: function (t) {
     var ex = DRILLS[dIdx];
     var over = t.elapsed > ex.par;
-    var labels = { idle: 'READY', wait: 'STAND BY…', run: 'RUNNING', done: over ? 'OVER PAR' : 'PASSED · UNDER PAR', stopped: 'STOPPED' };
+    var labels = { idle: 'PRÊT', wait: 'ATTENTION…', run: 'EN COURS', done: over ? 'HORS TEMPS' : 'RÉUSSI · SOUS LE PAR', stopped: 'ARRÊTÉ' };
     var st = $('d-status');
-    st.textContent = (S.dry && t.phase === 'run') ? 'RUNNING · TAP'
-      : (t.phase === 'stopped' && t.timedOut) ? (t.shots.length ? 'STOPPED · 5 S WITHOUT A SHOT' : 'NO SHOT DETECTED') : labels[t.phase];
+    st.textContent = (S.dry && t.phase === 'run') ? 'EN COURS · TAPE'
+      : (t.phase === 'stopped' && t.timedOut) ? (t.shots.length ? 'ARRÊTÉ · 5 S SANS TIR' : 'AUCUN TIR DÉTECTÉ') : labels[t.phase];
     st.style.color = (t.phase === 'idle' || t.phase === 'wait') ? 'var(--sand)' : 'var(--ink)';
     $('d-time').textContent = fmt(t.elapsed);
     var bar = $('d-bar');
@@ -706,10 +722,10 @@ function renderList() {
 function openDrill(i) {
   D.cancel(); dIdx = i;
   var ex = DRILLS[i];
-  $('d-kicker').textContent = 'DRILL ' + (i + 1) + '/' + DRILLS.length + ' · ' + ex.shots + (ex.shots > 1 ? ' SHOTS' : ' SHOT');
+  $('d-kicker').textContent = 'EXERCICE ' + (i + 1) + '/' + DRILLS.length + ' · ' + ex.shots + (ex.shots > 1 ? ' COUPS' : ' COUP');
   $('d-name').textContent = ex.name;
   $('d-desc').textContent = ex.desc;
-  $('d-parlbl').textContent = 'TOTAL TIME · PAR ' + fmt(ex.par) + ' S';
+  $('d-parlbl').textContent = 'TEMPS TOTAL · PAR ' + fmt(ex.par) + ' S';
   $('d-next').disabled = i === DRILLS.length - 1;
   $('d-list').classList.remove('on'); $('d-ex').classList.add('on');
   D._n = -1; D.reset();
@@ -728,18 +744,18 @@ $('d-reset').onclick = function () { D.reset(); };
 $('d-next').onclick = function () { if (dIdx < DRILLS.length - 1) openDrill(dIdx + 1); };
 $('d-clock').addEventListener('pointerdown', function (e) { e.preventDefault(); D.tap(); });
 $('d-clear').onclick = function () {
-  if (confirm('Clear all Marshall Qual results?')) { R = {}; save('shottimer.results', R); renderList(); }
+  if (confirm('Effacer tous les résultats Marshall Qual ?')) { R = {}; save('shottimer.results', R); renderList(); }
 };
 
 /* ---------- Réglages ---------- */
-function sensLabel(v) { return (v < 34 ? 'Low' : v < 67 ? 'Medium' : 'High') + ' · ' + v; }
+function sensLabel(v) { return (v < 34 ? 'Faible' : v < 67 ? 'Moyenne' : 'Élevée') + ' · ' + v; }
 function renderSettings() {
   $('s-delay').value = S.delay;
-  $('s-delay-v').textContent = S.delay <= 0 ? 'Instant' : S.delay <= 1.5 ? fmt1(S.delay) + ' s' : '1.5 – ' + fmt1(S.delay) + ' s';
+  $('s-delay-v').textContent = S.delay <= 0 ? 'Immédiat' : S.delay <= 1.5 ? fmt1(S.delay) + ' s' : '1,5 – ' + fmt1(S.delay) + ' s';
   $('s-parbeep').checked = S.parBeep;
-  $('s-vol').value = S.vol; $('s-vol-v').textContent = S.vol > 0 ? S.vol + '%' : 'Muted';
+  $('s-vol').value = S.vol; $('s-vol-v').textContent = S.vol > 0 ? S.vol + ' %' : 'Muet';
   $('s-tone').value = S.tone;
-  $('s-tone-v').textContent = (S.tone < 1800 ? 'Low' : S.tone <= 2400 ? 'Medium' : 'High') + ' · ' + S.tone + ' Hz';
+  $('s-tone-v').textContent = (S.tone < 1800 ? 'Grave' : S.tone <= 2400 ? 'Médium' : 'Aigu') + ' · ' + S.tone + ' Hz';
   $('s-sens').value = S.sens; $('s-sens-v').textContent = sensLabel(+S.sens);
   $('s-echo').value = S.echo; $('s-echo-v').textContent = fmt(S.echo / 100) + ' s';
   $('s-dry').checked = S.dry;
@@ -760,35 +776,125 @@ var testing = false, testHits = 0, flashT = 0;
 function stopTest() {
   testing = false; levelListener = null;
   if (!active) hitListener = null;
-  $('s-test').textContent = 'TEST THE MIC'; $('s-test').classList.remove('on');
+  $('s-test').textContent = 'TESTER LE MICRO'; $('s-test').classList.remove('on');
   $('s-meter').classList.remove('on');
 }
 $('s-test').onclick = function () {
   if (testing) { stopTest(); return; }
+  if (cal) calStop(false);
   var err = $('s-err'); err.classList.remove('on');
   ensureMic().then(function () {
     pushParams();
     testing = true; testHits = 0;
-    $('s-hits').textContent = '0 detections';
-    $('s-test').textContent = 'STOP THE TEST'; $('s-test').classList.add('on');
+    $('s-hits').textContent = '0 détection';
+    $('s-test').textContent = 'ARRÊTER LE TEST'; $('s-test').classList.add('on');
     $('s-meter').classList.add('on');
     levelListener = function (l) { $('s-lvl').style.width = Math.min(l * 100, 100).toFixed(1) + '%'; };
     hitListener = function () {
       testHits++;
-      $('s-hits').textContent = testHits + (testHits === 1 ? ' detection' : ' detections');
+      $('s-hits').textContent = testHits + (testHits > 1 ? ' détections' : ' détection');
       var b = $('s-bar'); b.classList.add('hit'); clearTimeout(flashT);
       flashT = setTimeout(function () { b.classList.remove('hit'); }, 200);
     };
   }).catch(function (e) { err.textContent = e.message; err.classList.add('on'); });
 };
 
+/* ---------- Calibration automatique (3 tirs) ---------- */
+// 1) ~1,5 s de silence pour mesurer le bruit ambiant, 2) l'utilisateur tire 3 coups,
+// 3) seuil = moitié du plus faible des 3 tirs (au moins 2× le bruit ambiant), converti en sensibilité.
+var CAL_T = {
+  btn: 'CALIBRER LE MICRO', cancel: 'ANNULER', close: 'FERMER', retry: 'RECOMMENCER',
+  silence: 'Silence…', silenceMsg: 'Ne tire pas : mesure du bruit ambiant.',
+  shoot: function (n) { return 'Tire ' + (3 - n) + (3 - n > 1 ? ' coups' : ' coup'); },
+  shootMsg: 'Tire 3 coups à ton rythme, espacés d\'au moins une demi-seconde.',
+  done: 'Calibré', doneMsg: function (s) { return 'Sensibilité réglée sur ' + s + '. Le curseur a été mis à jour.'; },
+  clamp: ' Les tirs sont très faibles : vérifie que le micro n\'est pas couvert.',
+  noisy: 'Bruit ambiant trop fort pour calibrer. Réessaie quand le stand est plus calme.',
+  timeout: 'Moins de 3 tirs détectés en 30 s. Rapproche l\'iPhone ou réessaie.',
+  fail: 'Échec'
+};
+var cal = null;
+function calUI(step, msg, dots, btnLabel) {
+  $('s-calbox').hidden = false;
+  $('s-calstep').textContent = step;
+  $('s-calmsg').textContent = msg;
+  $('s-caldots').querySelectorAll('i').forEach(function (d, i) { d.classList.toggle('on', i < dots); });
+  $('s-calcancel').textContent = btnLabel || CAL_T.cancel;
+}
+function calStop(keepBox) {
+  if (cal) { clearTimeout(cal.timer); cal = null; }
+  if (!testing) levelListener = null;
+  $('s-cal').disabled = false;
+  if (!keepBox) $('s-calbox').hidden = true;
+}
+function calFinish() {
+  var peaks = cal.peaks, noise = cal.noise;
+  var minPeak = Math.min.apply(null, peaks);
+  var th = Math.max(minPeak * 0.5, noise * 2, 0.02);
+  // Inverse de threshold() : th = (0.92 - s*0.0084) / SENS_BOOST
+  var s = Math.round((0.92 - th * SENS_BOOST) / 0.0084);
+  var clamped = s > 100;
+  s = Math.max(0, Math.min(100, s));
+  calStop(true);
+  setS('sens', s);
+  calUI(CAL_T.done, CAL_T.doneMsg(s) + (clamped ? CAL_T.clamp : ''), 3, CAL_T.close);
+}
+function calFail(msg) {
+  calStop(true);
+  calUI(CAL_T.fail, msg, 0, CAL_T.close);
+}
+function calLevel(l) {
+  if (!cal) return;
+  var now = performance.now();
+  if (cal.phase === 'ambient') {
+    cal.amb.push(l);
+    if (now - cal.t0 >= 1500) {
+      var a = cal.amb.slice().sort(function (x, y) { return x - y; });
+      cal.noise = a[Math.floor(a.length * 0.9)] || 0;
+      if (cal.noise > 0.45) { calFail(CAL_T.noisy); return; }
+      cal.floor = Math.max(cal.noise * 3, 0.04);
+      cal.phase = 'shots';
+      calUI(CAL_T.shoot(0), CAL_T.shootMsg, 0);
+      cal.timer = setTimeout(function () { calFail(CAL_T.timeout); }, 30000);
+    }
+    return;
+  }
+  if (l < cal.floor) return;
+  if (now - cal.lastEvt > 350) {               // nouveau tir
+    if (cal.peaks.length === 3) return;
+    cal.peaks.push(l); cal.lastEvt = now;
+    var n = cal.peaks.length;
+    calUI(n < 3 ? CAL_T.shoot(n) : CAL_T.done, CAL_T.shootMsg, n);
+    if (n === 3) setTimeout(function () { if (cal) calFinish(); }, 200);
+  } else if (now - cal.lastEvt < 150) {         // même tir : garde la crête
+    var i = cal.peaks.length - 1;
+    if (l > cal.peaks[i]) cal.peaks[i] = l;
+  }
+}
+$('s-cal').onclick = function () {
+  if (testing) stopTest();
+  if (active) active.stopRun();
+  $('s-err').classList.remove('on');
+  $('s-cal').disabled = true;
+  ensureMic().then(function () {
+    cal = { phase: 'ambient', t0: performance.now(), amb: [], peaks: [], lastEvt: -1e9, noise: 0, floor: 1 };
+    calUI(CAL_T.silence, CAL_T.silenceMsg, 0);
+    levelListener = calLevel;
+  }).catch(function (e) {
+    $('s-cal').disabled = false;
+    $('s-err').textContent = e.message; $('s-err').classList.add('on');
+  });
+};
+$('s-calcancel').onclick = function () { calStop(false); };
+
 $('s-micoff').onclick = function () {
+  if (cal) calStop(false);
   if (testing) stopTest();
   if (active) active.stopRun();
   releaseMic(); // le prochain Départ refait une demande d'accès au micro
 };
 
-/* ---------- Language ---------- */
+/* ---------- Langue ---------- */
 document.querySelectorAll('.seg [data-lang]').forEach(function (b) {
   b.onclick = function () {
     var l = b.getAttribute('data-lang');
@@ -801,6 +907,7 @@ document.querySelectorAll('.seg [data-lang]').forEach(function (b) {
 /* ---------- Crédits ---------- */
 function showCredits(on) {
   if (on && testing) stopTest();
+  if (on) calStop(false);
   $('r-main').classList.toggle('on', !on);
   $('r-credits').classList.toggle('on', on);
 }
@@ -811,6 +918,7 @@ $('r-back').onclick = function () { showCredits(false); };
 function showTab(name) {
   if (active) active.stopRun();
   if (testing && name !== 'reglages') stopTest();
+  if (name !== 'reglages') calStop(false);
   ['chrono', 'drills', 'reglages'].forEach(function (n) {
     $('v-' + n).classList.toggle('on', n === name);
   });

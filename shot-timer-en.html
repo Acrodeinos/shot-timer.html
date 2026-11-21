@@ -69,10 +69,10 @@ h1.sm{font-size:36px}
 .chip em{font-style:normal;font-size:11px;color:var(--sand)}
 
 .grow{flex:1}
-.actions{padding:12px 24px;display:flex;gap:10px}
+.actions{padding:12px 24px;display:flex;gap:10px;align-items:center}
 .sq{width:62px;height:62px;flex:none;border:1px solid var(--ink);background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .sq:disabled{opacity:.35;cursor:default}
-.main{flex:1;height:62px;border:none;background:var(--ink);color:#fff;font-family:var(--display);font-size:25px;letter-spacing:.1em;cursor:pointer}
+.main{flex:1;height:71px;border:none;background:var(--ink);color:#fff;font-family:var(--display);font-size:29px;letter-spacing:.1em;cursor:pointer}
 .main.run{background:var(--sand-l);color:var(--ink)}
 .sq:active,.main:active{transform:translateY(1px)}
 
@@ -333,7 +333,7 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
       </section>
       <section class="group">
         <span class="kicker">VERSION</span>
-        <p class="credit-name">V1.18</p>
+        <p class="credit-name">V1.19</p>
         <p class="desc">Updated on 21 November 2026.</p>
       </section>
     </div>
@@ -411,14 +411,27 @@ function renderMicState() {
 }
 var hitListener = null, levelListener = null;
 
+// Audio engine. On iPhone, after going to the background it can stay "interrupted"
+// or "suspended": resume it on every tap, and recreate it if it was closed.
 function getCtx() {
+  if (ctx && ctx.state === 'closed') { releaseMic(); ctx = null; }
   if (!ctx) {
     var AC = window.AudioContext || window.webkitAudioContext;
     ctx = new AC({ latencyHint: 'interactive' });
   }
-  if (ctx.state === 'suspended') ctx.resume();
+  if (ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
   return ctx;
 }
+// Throw away a stuck audio engine: the next Start creates a fresh one.
+function resetAudio() {
+  releaseMic();
+  try { if (ctx) ctx.close(); } catch (e) {}
+  ctx = null;
+}
+function micAlive() {
+  return !!micStream && micStream.getAudioTracks().some(function (t) { return t.readyState === 'live'; });
+}
+var AUDIO_STUCK = "Sound got stuck after the iPhone went to sleep. Press Start again.";
 
 var WORKLET = "class P extends AudioWorkletProcessor{constructor(){super();this.th=.5;this.dead=.08;this.last=-1e9;this.pk=0;this.n=0;this.port.onmessage=e=>{if(e.data.th!=null)this.th=e.data.th;if(e.data.dead!=null)this.dead=e.data.dead;}}process(inp){const c=inp[0]&&inp[0][0];if(!c)return true;for(let i=0;i<c.length;i++){const a=c[i]<0?-c[i]:c[i];if(a>this.pk)this.pk=a;if(a>=this.th){const t=(currentFrame+i)/sampleRate;if(t-this.last>=this.dead){this.last=t;this.port.postMessage({hit:t,a:a});}}}this.n+=c.length;if(this.n>=1024){this.port.postMessage({lvl:this.pk});this.pk=0;this.n=0;}return true;}}registerProcessor('shot-detector',P);";
 
@@ -432,6 +445,8 @@ function onDetectorMsg(d) {
 }
 
 function ensureMic() {
+  // iOS stops the mic when the app goes to the background: reopen it if it's dead.
+  if (micReady && micStream && !micAlive()) releaseMic();
   if (micReady) return micReady;
   var c = getCtx();
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -440,9 +455,15 @@ function ensureMic() {
       : "This browser doesn't support the mic."));
   }
   try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
-  micReady = navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-  }).then(function (stream) {
+  // 10 s max: if iOS doesn't answer, say so instead of hanging.
+  micReady = Promise.race([
+    navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    }),
+    new Promise(function (_, reject) { setTimeout(function () {
+      reject(new Error("The mic isn't responding. Fully close the app (swipe it up), reopen it, or turn on dry-fire mode."));
+    }, 10000); })
+  ]).then(function (stream) {
     micStream = stream;
     mic = c.createMediaStreamSource(stream);
     var sink = c.createGain(); sink.gain.value = 0; sink.connect(c.destination);
@@ -548,9 +569,11 @@ Timer.prototype.start = function () {
 
   var go = function () {
     if (self.phase !== 'wait') return;
+    c = ctx || getCtx();
     var d = S.delay;
     var delay = d <= 0 ? 0.3 : (d <= 1.5 ? d : 1.5 + Math.random() * (d - 1.5));
     self.t0 = c.currentTime + delay;
+    self.deadline = performance.now() + (delay + 2.5) * 1000; // safety net if the audio clock is frozen
     self.oscs.push(scheduleBeep(self.t0));
     var par = self.o.par();
     self.parAt = (S.parBeep && par > 0) ? self.t0 + par : null;
@@ -559,18 +582,34 @@ Timer.prototype.start = function () {
     self.loop();
   };
 
-  if (S.dry) { go(); }
+  // Wait for the audio engine to resume (1 s max, the safety net takes over after that).
+  var audioReady = function () {
+    if (!ctx || ctx.state === 'running') return Promise.resolve();
+    return Promise.race([ctx.resume().catch(function () {}), new Promise(function (r) { setTimeout(r, 1000); })]);
+  };
+  var fail = function (msg) {
+    self.cancel();
+    self.phase = 'idle'; self.err = msg; active = null; keepAwake(false);
+    self.o.onUpdate(self);
+  };
+
+  if (S.dry) { audioReady().then(go); }
   else {
-    ensureMic().then(function () { pushParams(); go(); }).catch(function (e) {
-      self.phase = 'idle'; self.err = e.message; active = null; keepAwake(false);
-      self.o.onUpdate(self);
-    });
+    ensureMic().then(function () { pushParams(); return audioReady(); }).then(go).catch(function (e) { fail(e.message); });
   }
 };
 Timer.prototype.loop = function () {
   var self = this;
   var tick = function () {
+    if (!ctx) return;
     var now = ctx.currentTime;
+    if (self.phase === 'wait' && now < self.t0 && performance.now() > self.deadline) {
+      // The audio clock isn't moving (engine frozen by iOS): throw it away and tell the user.
+      self.cancel(); resetAudio();
+      self.phase = 'idle'; self.err = AUDIO_STUCK;
+      self.o.onUpdate(self);
+      return;
+    }
     if (self.phase === 'wait' && now >= self.t0) self.phase = 'run';
     if (self.phase === 'run') {
       self.elapsed = Math.min(now - self.t0, MAX_TIME);
@@ -616,7 +655,7 @@ Timer.prototype.finish = function () {
 };
 Timer.prototype.cancelFuturePar = function () { /* les oscillateurs sont stoppés dans cancel() */ };
 Timer.prototype.stopRun = function () {
-  var wasWait = this.phase === 'wait' && (this.t0 == null || ctx.currentTime < this.t0);
+  var wasWait = this.phase === 'wait' && (this.t0 == null || !ctx || ctx.currentTime < this.t0);
   this.cancel();
   if (wasWait) { this.phase = 'idle'; this.elapsed = 0; this.shots = []; }
   else {
@@ -940,7 +979,15 @@ document.querySelectorAll('nav.tabs button').forEach(function (b) {
 document.addEventListener('visibilitychange', function () {
   if (document.hidden && active) active.stopRun();
   if (!document.hidden && wakeLock === null && active) keepAwake(true);
+  if (!document.hidden) wakeAudio();
 });
+// Back in the foreground (home-screen app reopened): resume audio, drop a mic iOS has stopped.
+function wakeAudio() {
+  if (ctx && ctx.state !== 'running') { try { ctx.resume(); } catch (e) {} }
+  if (micStream && !micAlive()) releaseMic();
+}
+window.addEventListener('pageshow', wakeAudio);
+window.addEventListener('focus', wakeAudio);
 
 /* ---------- Offline mode: stores the app on the iPhone (see sw.js) ---------- */
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {

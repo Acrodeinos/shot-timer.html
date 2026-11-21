@@ -2,7 +2,7 @@
  * À chaque nouvelle version de l'app, augmente VERSION : l'iPhone téléchargera
  * la mise à jour à la prochaine ouverture avec réseau.
  */
-var VERSION = 'shot-timer-v1.18'; // même numéro que dans Crédits et versions
+var VERSION = 'shot-timer-v1.19'; // même numéro que dans Crédits et versions
 
 // Fichiers de l'app copiés dans l'iPhone dès la première ouverture.
 var CORE = [

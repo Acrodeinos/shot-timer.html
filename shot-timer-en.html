@@ -1,0 +1,955 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Shot Timer">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Shot Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#121212; --ink2:#33302b; --mute:#6b665e; --sand:#74644c; --sand-l:#b29f82;
+  --line:#d8d3ca; --soft:#f2f0ec; --bg:#ffffff;
+  --display: Anton, Impact, "Arial Narrow Bold", "Helvetica Neue Condensed Bold", sans-serif;
+  --text: Inter, -apple-system, system-ui, sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink)}
+body{font-family:var(--text);overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+button{font:inherit;color:inherit;-webkit-appearance:none;appearance:none;border-radius:0;touch-action:manipulation}
+.app{max-width:480px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+.view{flex:1;min-height:0;display:none;flex-direction:column}
+.view.on{display:flex}
+.sub{flex:1;min-height:0;display:none;flex-direction:column}
+.sub.on{display:flex}
+
+header.top{padding:calc(env(safe-area-inset-top) + 28px) 24px 0;display:flex;flex-direction:column;gap:6px}
+.kicker{font-size:11px;font-weight:700;letter-spacing:.28em;color:var(--sand)}
+h1{margin:0;font-family:var(--display);font-weight:400;font-size:44px;line-height:1;text-transform:uppercase}
+h1.sm{font-size:36px}
+.lede{margin:2px 0 0;font-size:13px;line-height:18px;color:var(--mute)}
+.desc{margin:0;font-size:13px;line-height:18px;color:var(--ink2)}
+
+.clock{margin:32px 24px 0;border-top:3px solid var(--ink);padding-top:14px;display:flex;flex-direction:column;gap:4px;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left;width:auto}
+.clock.tap{cursor:pointer}
+.clock.tap:active{background:var(--soft)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.status{font-size:11px;font-weight:700;letter-spacing:.28em}
+.lbl{font-size:11px;font-weight:600;letter-spacing:.2em;color:var(--mute)}
+.time{font-family:var(--display);font-size:clamp(96px,38vw,150px);line-height:1.02;font-variant-numeric:tabular-nums;white-space:nowrap}
+.time.mid{font-size:clamp(80px,30vw,120px)}
+.time.long{font-size:clamp(72px,27vw,110px)}
+.parbar{height:6px;background:var(--soft);position:relative;overflow:hidden}
+.parbar i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ink)}
+.parbar i.over{background:var(--sand-l)}
+
+.stats{margin:18px 24px 0;display:grid;gap:1px;background:var(--line);border:1px solid var(--line)}
+.stats.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.stats.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.stats>div{background:var(--bg);padding:12px 16px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.stats.c3>div{padding:9px 12px;gap:4px}
+.stats .k{font-size:10px;font-weight:700;letter-spacing:.18em;color:var(--mute)}
+.stats .v{font-family:var(--display);font-size:48px;line-height:1;font-variant-numeric:tabular-nums}
+.stats.c3 .v{font-size:24px}
+
+.hint{margin:16px 24px 0;font-size:14px;line-height:1.45;color:var(--mute)}
+.splits{margin:14px 24px 0;display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.splits::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);padding:6px 10px;display:flex;flex-direction:column;gap:2px;font-variant-numeric:tabular-nums}
+.chip b{font-size:10px;letter-spacing:.14em;color:var(--mute)}
+.chip span{font-size:14px;font-weight:700}
+.chip em{font-style:normal;font-size:11px;color:var(--sand)}
+
+.grow{flex:1}
+.actions{padding:12px 24px;display:flex;gap:10px}
+.sq{width:62px;height:62px;flex:none;border:1px solid var(--ink);background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.sq:disabled{opacity:.35;cursor:default}
+.main{flex:1;height:62px;border:none;background:var(--ink);color:#fff;font-family:var(--display);font-size:25px;letter-spacing:.1em;cursor:pointer}
+.main.run{background:var(--sand-l);color:var(--ink)}
+.sq:active,.main:active{transform:translateY(1px)}
+
+.list{margin:14px 24px 0;flex:1;min-height:0;overflow:auto;border-top:3px solid var(--ink);-webkit-overflow-scrolling:touch}
+.item{width:100%;display:flex;align-items:center;gap:12px;padding:11px 0;border:none;border-bottom:1px solid var(--line);background:var(--bg);text-align:left;cursor:pointer;min-height:56px}
+.item:active{background:var(--soft)}
+.item .n{width:30px;font-family:var(--display);font-size:22px;line-height:1;color:var(--sand)}
+.item .m{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.item .t{font-family:var(--display);font-size:20px;line-height:1;text-transform:uppercase}
+.item .s{font-size:12px;color:var(--mute)}
+.item .r{display:flex;flex-direction:column;align-items:flex-end;gap:3px;font-variant-numeric:tabular-nums}
+.item .p{font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--mute)}
+.item .res{font-size:15px;font-weight:700}
+.linkbtn{align-self:flex-start;min-height:44px;padding:0 12px 0 4px;margin-left:-4px;border:none;background:none;font-size:13px;font-weight:600;display:flex;align-items:center;gap:4px;cursor:pointer}
+.clearbtn{margin:10px 24px 12px;align-self:flex-end;border:none;background:none;font-size:12px;font-weight:600;letter-spacing:.12em;color:var(--mute);min-height:36px;cursor:pointer}
+
+.settings{margin:18px 24px 0;flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:22px;padding-bottom:16px;-webkit-overflow-scrolling:touch}
+.group{border-top:3px solid var(--ink);padding-top:12px;display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field .row{font-size:14px}
+.field .row b{font-weight:700;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--ink);height:28px;margin:0}
+input[type=checkbox]{width:24px;height:24px;accent-color:var(--ink);margin:0;flex:none}
+.stepper{display:flex;align-items:center;border:1px solid var(--ink)}
+.stepper button{width:44px;height:44px;border:none;background:var(--bg);font-size:20px;cursor:pointer}
+.stepper span{width:64px;text-align:center;font-family:var(--display);font-size:20px;font-variant-numeric:tabular-nums}
+.toggle{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:44px}
+.toggle small{display:block;font-size:12px;color:var(--mute);margin-top:2px}
+.toggle label{font-size:14px}
+.outline{height:52px;border:1px solid var(--ink);background:var(--bg);font-family:var(--display);font-size:18px;letter-spacing:.1em;cursor:pointer}
+.outline.on{background:var(--ink);color:#fff}
+.outline:disabled{opacity:.35;cursor:default}
+.calbox{background:var(--soft);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.calbox[hidden]{display:none}
+.calbox .row{font-size:14px}
+.calbox p{margin:0;font-size:13px;line-height:1.45;color:var(--ink2)}
+.caldots{display:flex;gap:6px}
+.caldots i{width:14px;height:14px;border:2px solid var(--ink);border-radius:50%}
+.caldots i.on{background:var(--ink)}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--ink)}
+.seg button{height:48px;border:none;background:var(--bg);font-family:var(--display);font-size:17px;letter-spacing:.1em;cursor:pointer}
+.seg button+button{border-left:1px solid var(--ink)}
+.seg button[aria-pressed=true]{background:var(--ink);color:#fff;cursor:default}
+.rowlink{display:flex;justify-content:space-between;align-items:center;min-height:52px;padding:0;border:none;border-top:3px solid var(--ink);background:var(--bg);font-family:var(--display);font-size:20px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;text-align:left}
+.rowlink:active{background:var(--soft)}
+.credit-name{margin:0;font-family:var(--display);font-size:32px;line-height:1;text-transform:uppercase}
+.desc b{font-weight:700}
+.extlink{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:56px;padding:12px 16px;border:1px solid var(--ink);color:var(--ink);text-decoration:none}
+.extlink span{display:flex;flex-direction:column;gap:3px;min-width:0}
+.extlink b{font-family:var(--display);font-weight:400;font-size:18px;letter-spacing:.06em;text-transform:uppercase}
+.extlink small{font-size:12px;color:var(--mute)}
+.extlink svg{flex:none}
+.extlink:active{background:var(--soft)}
+.meter{display:none;flex-direction:column;gap:6px}
+.meter.on{display:flex}
+.meter .bar{height:14px;background:var(--soft);position:relative;overflow:hidden}
+.meter .bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--ink);transition:width 60ms linear}
+.meter .bar u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--sand)}
+.meter .bar.hit i{background:var(--sand-l)}
+.meter .row{font-size:12px;color:var(--mute)}
+.tip{background:var(--soft);padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.tip b{font-size:11px;letter-spacing:.2em}
+.tip p{margin:0;font-size:13px;line-height:1.45;color:var(--ink2)}
+.err{margin:10px 24px 0;font-size:13px;line-height:1.4;color:var(--sand);display:none}
+.err.on{display:block}
+
+nav.tabs{flex:none;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding-bottom:max(env(safe-area-inset-bottom),10px)}
+nav.tabs button{height:62px;border:none;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--mute);font-size:10px;font-weight:700;letter-spacing:.12em;cursor:pointer}
+nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var(--ink)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ CHRONO LIBRE ============ -->
+  <main class="view on" id="v-chrono">
+    <header class="top">
+      <span class="kicker">FREE TIMER</span>
+      <h1>Shot Timer</h1>
+    </header>
+    <button type="button" class="clock" id="c-clock" disabled>
+      <span class="row"><span class="status" id="c-status">READY</span><span class="lbl" id="c-parlbl">TOTAL TIME</span></span>
+      <span class="time" id="c-time">0.00</span>
+    </button>
+    <section class="stats c2">
+      <div><span class="k">SHOTS</span><span class="v" id="c-count">0</span></div>
+      <div><span class="k">FIRST SHOT</span><span class="v" id="c-first">—</span></div>
+    </section>
+    <p class="hint" id="c-hint">Press Start, wait for the beep, then shoot. The mic counts every shot; press Stop when you're done.</p>
+    <div class="splits" id="c-splits"></div>
+    <p class="err" id="c-err"></p>
+    <div class="grow"></div>
+    <div class="actions">
+      <button type="button" class="sq" id="c-reset" aria-label="Reset">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+      </button>
+      <button type="button" class="main" id="c-main">START</button>
+    </div>
+  </main>
+
+  <!-- ============ DRILLS ============ -->
+  <main class="view" id="v-drills">
+    <div class="sub on" id="d-list">
+      <header class="top">
+        <span class="kicker">AIR MARSHAL COURSE · TPC</span>
+        <h1>Marshall Qual</h1>
+        <p class="lede">One string per drill. Tap a drill to start the timer.</p>
+      </header>
+      <section class="stats c3" style="margin-top:16px;grid-template-columns:repeat(2,minmax(0,1fr))">
+        <div><span class="k">PASSED</span><span class="v" id="d-ok">0/7</span></div>
+        <div><span class="k">TOTAL TIME</span><span class="v" id="d-sum">—</span></div>
+      </section>
+      <div class="list" id="d-items"></div>
+      <button type="button" class="clearbtn" id="d-clear">CLEAR RESULTS</button>
+    </div>
+
+    <div class="sub" id="d-ex">
+      <header class="top" style="gap:8px;padding-top:calc(env(safe-area-inset-top) + 16px)">
+        <button type="button" class="linkbtn" id="d-back">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Marshall Qual
+        </button>
+        <span class="kicker" id="d-kicker"></span>
+        <h1 class="sm" id="d-name"></h1>
+        <p class="desc" id="d-desc"></p>
+      </header>
+      <button type="button" class="clock" id="d-clock" style="margin-top:14px;padding-top:12px;gap:6px" disabled>
+        <span class="row"><span class="status" id="d-status">READY</span><span class="lbl" id="d-parlbl"></span></span>
+        <span class="time mid" id="d-time">0.00</span>
+        <span class="parbar" aria-hidden="true"><i id="d-bar"></i></span>
+      </button>
+      <section class="stats c2" style="margin-top:16px">
+        <div><span class="k">SHOTS</span><span class="v" id="d-count">0/1</span></div>
+        <div><span class="k">FIRST SHOT</span><span class="v" id="d-first">—</span></div>
+      </section>
+      <div class="splits" id="d-splits"></div>
+      <p class="err" id="d-err"></p>
+      <div class="grow"></div>
+      <div class="actions">
+        <button type="button" class="sq" id="d-reset" aria-label="Reset">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+        </button>
+        <button type="button" class="main" id="d-main">START</button>
+        <button type="button" class="sq" id="d-next" aria-label="Next drill">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============ RÉGLAGES ============ -->
+  <main class="view" id="v-reglages">
+   <div class="sub on" id="r-main">
+    <header class="top">
+      <span class="kicker">TIMER &amp; MIC</span>
+      <h1>Settings</h1>
+    </header>
+    <div class="settings">
+      <section class="group">
+        <span class="kicker">LANGUAGE · LANGUE</span>
+        <div class="seg" role="group" aria-label="Language">
+          <button type="button" aria-pressed="false" data-lang="fr">FRANÇAIS</button>
+          <button type="button" aria-pressed="true">ENGLISH</button>
+        </div>
+      </section>
+
+      <section class="group">
+        <span class="kicker">START</span>
+        <div class="field">
+          <div class="row"><label for="s-delay">Random delay before the beep</label><b id="s-delay-v"></b></div>
+          <input id="s-delay" type="range" min="0" max="6" step="0.5">
+        </div>
+        <div class="toggle">
+          <label for="s-parbeep">Beep at par time (Drills)</label>
+          <input id="s-parbeep" type="checkbox">
+        </div>
+        <div class="field">
+          <div class="row"><label for="s-vol">Beep volume</label><b id="s-vol-v"></b></div>
+          <input id="s-vol" type="range" min="0" max="100" step="5">
+        </div>
+        <div class="field">
+          <div class="row"><label for="s-tone">Beep tone</label><b id="s-tone-v"></b></div>
+          <input id="s-tone" type="range" min="1200" max="3200" step="100">
+        </div>
+      </section>
+
+      <section class="group">
+        <span class="kicker">SHOT DETECTION</span>
+        <div class="field">
+          <div class="row"><label for="s-sens">Mic sensitivity</label><b id="s-sens-v"></b></div>
+          <input id="s-sens" type="range" min="0" max="100">
+        </div>
+        <div class="field">
+          <div class="row"><label for="s-echo">Echo rejection delay</label><b id="s-echo-v"></b></div>
+          <input id="s-echo" type="range" min="0" max="20">
+        </div>
+        <div class="toggle">
+          <div><label for="s-dry">Dry-fire mode</label><small>No mic: tap the screen on every trigger press</small></div>
+          <input id="s-dry" type="checkbox">
+        </div>
+        <button type="button" class="outline" id="s-cal">CALIBRATE THE MIC</button>
+        <div class="calbox" id="s-calbox" hidden>
+          <div class="row"><b id="s-calstep">Silence…</b><span class="caldots" id="s-caldots"><i></i><i></i><i></i></span></div>
+          <p id="s-calmsg">Don't shoot: measuring background noise.</p>
+          <button type="button" class="outline" id="s-calcancel" style="height:44px;font-size:15px">CANCEL</button>
+        </div>
+        <button type="button" class="outline" id="s-test">TEST THE MIC</button>
+        <div class="toggle">
+          <div><span style="font-size:14px;font-weight:700" id="s-micstate">Mic off</span><small>Access will be requested again on the next Start</small></div>
+          <button type="button" class="outline" id="s-micoff" style="height:44px;padding:0 14px;font-size:15px;flex:none">TURN MIC OFF</button>
+        </div>
+        <div class="meter" id="s-meter">
+          <div class="bar" id="s-bar"><i id="s-lvl"></i><u id="s-th"></u></div>
+          <div class="row"><span>Level · line = threshold</span><span id="s-hits">0 detections</span></div>
+        </div>
+        <p class="err" id="s-err" style="margin:0"></p>
+      </section>
+
+      <section class="tip">
+        <b>TIP</b>
+        <p>With electronic ear protection, keep the iPhone on your belt on your gun side: the mic picks up your shots better than those from the next lanes. If extra shots are counted, lower the sensitivity or raise the echo rejection delay.</p>
+      </section>
+
+      <button type="button" class="rowlink" id="r-open-credits">
+        <span>Credits</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+   </div>
+
+   <div class="sub" id="r-credits">
+    <header class="top" style="gap:8px;padding-top:calc(env(safe-area-inset-top) + 16px)">
+      <button type="button" class="linkbtn" id="r-back">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Settings
+      </button>
+      <span class="kicker">ABOUT</span>
+      <h1>Credits</h1>
+    </header>
+    <div class="settings">
+      <section class="group">
+        <span class="kicker">CREATED BY</span>
+        <p class="credit-name">Mathieu Kott</p>
+        <p class="desc">Design and creation of the Shot Timer app.</p>
+      </section>
+      <section class="group">
+        <span class="kicker">ARTIFICIAL INTELLIGENCE</span>
+        <p class="desc">This app was built with the help of AI: <b>Claude</b>, Anthropic's assistant, contributed to the design and development.</p>
+      </section>
+      <section class="group">
+        <span class="kicker">MARSHALL QUAL DRILLS</span>
+        <p class="desc">The drills on the Drills screen are based on the US Air Marshal pistol qualification as presented by GBRS Group.</p>
+        <a class="extlink" href="https://www.youtube.com/watch?v=G9xPJou3I1M" target="_blank" rel="noopener noreferrer">
+          <span>
+            <b>Watch the video on YouTube</b>
+            <small>GBRS Group · U.S. Air Marshal Pistol Qual Course Humbles the Cadre</small>
+          </span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>
+        </a>
+      </section>
+    </div>
+   </div>
+  </main>
+
+  <nav class="tabs" aria-label="Main navigation">
+    <button type="button" data-tab="chrono" aria-current="page">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M9 2h6"/></svg>TIMER</button>
+    <button type="button" data-tab="drills">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>DRILLS</button>
+    <button type="button" data-tab="reglages">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h9"/><path d="M19 6h1"/><path d="M4 12h3"/><path d="M13 12h7"/><path d="M4 18h11"/><circle cx="16" cy="6" r="2.5"/><circle cx="10" cy="12" r="2.5"/><circle cx="18" cy="18" r="2.5"/></svg>SETTINGS</button>
+  </nav>
+</div>
+
+<script>
+/* ---------- Language: French version is the site's index ---------- */
+var LANG_FILE = { fr: './', en: 'shot-timer-en.html' };
+(function () {
+'use strict';
+
+/* ---------- Données ---------- */
+var DRILLS = [
+  { name: "Draw", shots: 1, par: 1.65, meta: "1 shot · from the holster", desc: "Draw and fire 1 round." },
+  { name: "Double", shots: 2, par: 1.35, meta: "2 shots · low ready", desc: "Gun held at low ready, pointed at the ground. Fire 2 rounds." },
+  { name: "Rapid fire", shots: 6, par: 3.0, meta: "6 shots · low ready", desc: "From low ready, fire 6 rounds in a row." },
+  { name: "Reload", shots: 2, par: 3.25, meta: "2 shots · reload", desc: "From low ready: fire 1 round, reload, then fire 1 round." },
+  { name: "Two targets", shots: 2, par: 1.65, meta: "2 shots · 2 targets", desc: "2 targets 3 yards (2.7 m) apart. From low ready, fire 1 round on each target." },
+  { name: "Turn & fire", shots: 3, par: 3.5, meta: "3 shots · 3 targets · back turned", desc: "Gun concealed, back to the 3 targets. Turn around and fire 1 round on each target." },
+  { name: "Kneeling reload", shots: 2, par: 4.0, meta: "2 shots · kneeling", desc: "1 round chambered, empty magazine inserted. Fire 1 round, drop to one knee, reload, fire 1 round kneeling." }
+];
+
+var BEEP_DUR = 0.4;       // durée du bip (s) : plus long = perçu plus fort
+var BEEP_GUARD = 0.06;    // marge après le bip où le micro est ignoré
+var MAX_TIME = 99.99;
+var IDLE_TIMEOUT = 5;     // arrêt auto après 5 s sans tir détecté
+
+/* ---------- Stockage ---------- */
+function load(k, d) { try { var v = localStorage.getItem(k); return v ? Object.assign({}, d, JSON.parse(v)) : d; } catch (e) { return d; } }
+function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+var S = load('shottimer.settings', { delay: 4, par: 2.5, parBeep: true, vol: 100, tone: 2000, sens: 62, echo: 8, dry: false });
+var R = load('shottimer.results', {});
+
+/* ---------- Utilitaires ---------- */
+var $ = function (id) { return document.getElementById(id); };
+function fmt(v) { return v.toFixed(2); }
+function fmt1(v) { return (Math.round(v * 10) / 10).toString(); }
+// Seuil de détection (amplitude crête 0..1). Sensibilité de base +15 % sur toute la plage :
+// le seuil est divisé par 1,15, donc un son 15 % plus faible suffit pour compter un tir.
+var SENS_BOOST = 1.15;
+function threshold() { return (0.92 - (S.sens / 100) * 0.84) / SENS_BOOST; }
+function deadTime() { return S.echo / 100; }
+
+/* ---------- Audio ---------- */
+var ctx = null, mic = null, micNode = null, micReady = null, micStream = null, micSink = null;
+
+// Coupe complètement le micro : libère le flux (l'indicateur orange d'iOS disparaît).
+function releaseMic() {
+  try { if (micNode) { if (micNode.port) micNode.port.onmessage = null; micNode.onaudioprocess = null; micNode.disconnect(); } } catch (e) {}
+  try { if (mic) mic.disconnect(); } catch (e) {}
+  try { if (micSink) micSink.disconnect(); } catch (e) {}
+  if (micStream) micStream.getTracks().forEach(function (t) { t.stop(); });
+  mic = micNode = micStream = micSink = null; micReady = null;
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+  renderMicState();
+}
+function renderMicState() {
+  var on = !!micStream, b = document.getElementById('s-micoff'), s = document.getElementById('s-micstate');
+  if (!b) return;
+  b.disabled = !on;
+  s.textContent = on ? 'Mic on' : 'Mic off';
+  s.style.color = on ? 'var(--ink)' : 'var(--mute)';
+}
+var hitListener = null, levelListener = null;
+
+function getCtx() {
+  if (!ctx) {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    ctx = new AC({ latencyHint: 'interactive' });
+  }
+  if (ctx.state === 'suspended') ctx.resume();
+  return ctx;
+}
+
+var WORKLET = "class P extends AudioWorkletProcessor{constructor(){super();this.th=.5;this.dead=.08;this.last=-1e9;this.pk=0;this.n=0;this.port.onmessage=e=>{if(e.data.th!=null)this.th=e.data.th;if(e.data.dead!=null)this.dead=e.data.dead;}}process(inp){const c=inp[0]&&inp[0][0];if(!c)return true;for(let i=0;i<c.length;i++){const a=c[i]<0?-c[i]:c[i];if(a>this.pk)this.pk=a;if(a>=this.th){const t=(currentFrame+i)/sampleRate;if(t-this.last>=this.dead){this.last=t;this.port.postMessage({hit:t,a:a});}}}this.n+=c.length;if(this.n>=1024){this.port.postMessage({lvl:this.pk});this.pk=0;this.n=0;}return true;}}registerProcessor('shot-detector',P);";
+
+function pushParams() {
+  if (micNode && micNode.port) micNode.port.postMessage({ th: threshold(), dead: deadTime() });
+}
+
+function onDetectorMsg(d) {
+  if (d.hit != null && hitListener) hitListener(d.hit, d.a);
+  if (d.lvl != null && levelListener) levelListener(d.lvl);
+}
+
+function ensureMic() {
+  if (micReady) return micReady;
+  var c = getCtx();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    return Promise.reject(new Error(location.protocol === 'file:' || !window.isSecureContext
+      ? "Mic unavailable: Safari only allows the mic over https or on localhost. Turn on dry-fire mode, or serve the page from a local server."
+      : "This browser doesn't support the mic."));
+  }
+  try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
+  micReady = navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+  }).then(function (stream) {
+    micStream = stream;
+    mic = c.createMediaStreamSource(stream);
+    var sink = c.createGain(); sink.gain.value = 0; sink.connect(c.destination);
+    micSink = sink;
+    if (c.audioWorklet) {
+      var url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
+      return c.audioWorklet.addModule(url).then(function () {
+        micNode = new AudioWorkletNode(c, 'shot-detector', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 });
+        micNode.port.onmessage = function (e) { onDetectorMsg(e.data); };
+        mic.connect(micNode); micNode.connect(sink);
+        pushParams();
+        renderMicState();
+      });
+    }
+    // Repli : ScriptProcessor
+    var sp = c.createScriptProcessor(256, 1, 1), last = -1e9, pk = 0, n = 0;
+    sp.onaudioprocess = function (e) {
+      var ch = e.inputBuffer.getChannelData(0), sr = c.sampleRate;
+      var base = c.currentTime - ch.length / sr, th = threshold(), dead = deadTime();
+      for (var i = 0; i < ch.length; i++) {
+        var a = Math.abs(ch[i]); if (a > pk) pk = a;
+        if (a >= th) { var t = base + i / sr; if (t - last >= dead) { last = t; onDetectorMsg({ hit: t, a: a }); } }
+      }
+      n += ch.length; if (n >= 1024) { onDetectorMsg({ lvl: pk }); pk = 0; n = 0; }
+    };
+    micNode = sp; mic.connect(sp); sp.connect(sink);
+    renderMicState();
+  }).catch(function (err) {
+    micReady = null;
+    throw new Error(err && err.name === 'NotAllowedError'
+      ? "Mic access denied. Allow it in Safari (aA › Website Settings › Microphone) or turn on dry-fire mode."
+      : (err && err.message) || "Couldn't open the mic.");
+  });
+  return micReady;
+}
+
+// Volume du bip. Référence : le maximum du projet d'origine (gain 0,5).
+// 30 % du curseur = origine + 1/3 (0,667) ; 100 % = pleine échelle numérique (1,0),
+// soit le double du maximum d'origine. Au-delà de 1,0 le son saturerait sans être plus fort.
+// Courbe en décibels (comme un vrai bouton de volume) : 100 % = pleine puissance,
+// chaque 10 % en moins = -4 dB, 0 % = muet. Plage audible ≈ 40 dB.
+function beepGain() {
+  var v = +S.vol;
+  if (v <= 0) return 0;
+  return Math.pow(10, (-(100 - v) * 0.4) / 20);
+}
+
+function scheduleBeep(at, freq) {
+  var c = getCtx();
+  // Sans micro (tir à sec) : session « lecture » = haut-parleur, même en mode silencieux.
+  if (S.dry && !mic) { try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {} }
+  var o = c.createOscillator(), g = c.createGain();
+  // 3 kHz : zone où le haut-parleur de l'iPhone et l'oreille sont les plus efficaces (bips de shot timer classiques).
+  o.type = 'square'; o.frequency.value = freq || S.tone;
+  var v = beepGain();
+  g.gain.setValueAtTime(0, at);
+  g.gain.linearRampToValueAtTime(v, at + 0.005);
+  g.gain.setValueAtTime(v, at + BEEP_DUR - 0.01);
+  g.gain.linearRampToValueAtTime(0, at + BEEP_DUR);
+  o.connect(g); g.connect(c.destination);
+  o.start(at); o.stop(at + BEEP_DUR + 0.02);
+  return o;
+}
+
+/* ---------- Verrou d'écran ---------- */
+var wakeLock = null;
+function keepAwake(on) {
+  try {
+    if (on && navigator.wakeLock && !wakeLock) {
+      navigator.wakeLock.request('screen').then(function (w) { wakeLock = w; w.addEventListener('release', function () { wakeLock = null; }); }).catch(function () {});
+    } else if (!on && wakeLock) { wakeLock.release(); wakeLock = null; }
+  } catch (e) {}
+}
+
+/* ---------- Moteur de chrono ---------- */
+// Une seule session active à la fois.
+function Timer(opts) {
+  this.o = opts;            // { par: fn, maxShots: fn|null, onUpdate, onFinish }
+  this.reset();
+}
+Timer.prototype.reset = function () {
+  this.cancel();
+  this.phase = 'idle'; this.elapsed = 0; this.shots = []; this.err = ''; this.timedOut = false;
+  this.o.onUpdate(this);
+};
+Timer.prototype.cancel = function () {
+  (this.oscs || []).forEach(function (o) { try { o.stop(0); o.disconnect(); } catch (e) {} });
+  this.oscs = [];
+  if (this.raf) cancelAnimationFrame(this.raf);
+  this.raf = 0;
+  if (active === this) { hitListener = null; active = null; }
+  keepAwake(false);
+};
+Timer.prototype.start = function () {
+  var self = this;
+  if (active && active !== this) active.stopRun();
+  this.cancel();
+  var c = getCtx();
+  this.phase = 'wait'; this.elapsed = 0; this.shots = []; this.err = ''; this.timedOut = false;
+  active = this;
+  this.o.onUpdate(this);
+  keepAwake(true);
+
+  var go = function () {
+    if (self.phase !== 'wait') return;
+    var d = S.delay;
+    var delay = d <= 0 ? 0.3 : (d <= 1.5 ? d : 1.5 + Math.random() * (d - 1.5));
+    self.t0 = c.currentTime + delay;
+    self.oscs.push(scheduleBeep(self.t0));
+    var par = self.o.par();
+    self.parAt = (S.parBeep && par > 0) ? self.t0 + par : null;
+    if (self.parAt) self.oscs.push(scheduleBeep(self.parAt, Math.round(S.tone * 0.8)));
+    hitListener = function (t) { self.hit(t); };
+    self.loop();
+  };
+
+  if (S.dry) { go(); }
+  else {
+    ensureMic().then(function () { pushParams(); go(); }).catch(function (e) {
+      self.phase = 'idle'; self.err = e.message; active = null; keepAwake(false);
+      self.o.onUpdate(self);
+    });
+  }
+};
+Timer.prototype.loop = function () {
+  var self = this;
+  var tick = function () {
+    var now = ctx.currentTime;
+    if (self.phase === 'wait' && now >= self.t0) self.phase = 'run';
+    if (self.phase === 'run') {
+      self.elapsed = Math.min(now - self.t0, MAX_TIME);
+      if (self.elapsed >= MAX_TIME) { self.stopRun(); return; }
+      var lastShot = self.shots.length ? self.shots[self.shots.length - 1] : 0;
+      if (self.elapsed - lastShot >= IDLE_TIMEOUT) { self.timedOut = true; self.stopRun(); return; }
+    }
+    self.o.onUpdate(self);
+    if (self.phase === 'wait' || self.phase === 'run') self.raf = requestAnimationFrame(tick);
+  };
+  this.raf = requestAnimationFrame(tick);
+};
+Timer.prototype.hit = function (t) {
+  if (this.phase !== 'run' && this.phase !== 'wait') return;
+  if (this.t0 == null || t < this.t0 + BEEP_DUR + BEEP_GUARD) return;     // ignore le bip de départ
+  if (this.parAt && t >= this.parAt - 0.01 && t < this.parAt + BEEP_DUR + BEEP_GUARD) return; // ignore le bip de par
+  var s = t - this.t0;
+  var last = this.shots[this.shots.length - 1];
+  if (last != null && s <= last) return;
+  this.shots.push(s);
+  var max = this.o.maxShots && this.o.maxShots();
+  if (max && this.shots.length >= max) { this.finish(); return; }
+  this.o.onUpdate(this);
+};
+Timer.prototype.tap = function () { // mode tir à sec
+  if (!S.dry || this.phase !== 'run') return;
+  var t = ctx.currentTime;
+  if (t < this.t0 + 0.05) return;
+  var s = t - this.t0, last = this.shots[this.shots.length - 1];
+  if (last != null && s - last < 0.04) return;
+  this.shots.push(s);
+  var max = this.o.maxShots && this.o.maxShots();
+  if (max && this.shots.length >= max) { this.finish(); return; }
+  this.o.onUpdate(this);
+};
+Timer.prototype.finish = function () {
+  this.cancelFuturePar();
+  this.cancel();
+  this.phase = 'done';
+  this.elapsed = this.shots.length ? this.shots[this.shots.length - 1] : this.elapsed;
+  this.o.onUpdate(this);
+  if (this.o.onFinish) this.o.onFinish(this);
+};
+Timer.prototype.cancelFuturePar = function () { /* les oscillateurs sont stoppés dans cancel() */ };
+Timer.prototype.stopRun = function () {
+  var wasWait = this.phase === 'wait' && (this.t0 == null || ctx.currentTime < this.t0);
+  this.cancel();
+  if (wasWait) { this.phase = 'idle'; this.elapsed = 0; this.shots = []; }
+  else {
+    this.phase = 'stopped';
+    this.elapsed = this.shots.length ? this.shots[this.shots.length - 1] : (this.timedOut ? 0 : this.elapsed);
+  }
+  this.o.onUpdate(this);
+};
+Timer.prototype.running = function () { return this.phase === 'wait' || this.phase === 'run'; };
+
+var active = null;
+
+function timeClass(el, v) {
+  el.classList.toggle('long', v >= 10 && !el.classList.contains('mid'));
+}
+function renderSplits(el, shots) {
+  var h = '';
+  for (var i = 0; i < shots.length; i++) {
+    h += '<div class="chip"><b>#' + (i + 1) + '</b><span>' + fmt(shots[i]) + '</span><em>' +
+      (i === 0 ? 'first' : '+' + fmt(shots[i] - shots[i - 1])) + '</em></div>';
+  }
+  el.innerHTML = h;
+  el.scrollLeft = el.scrollWidth;
+}
+function setMain(btn, running) {
+  btn.textContent = running ? 'STOP' : 'START';
+  btn.classList.toggle('run', running);
+}
+
+/* ---------- Écran Chrono libre ---------- */
+var C = new Timer({
+  par: function () { return 0; }, // pas de par en chrono libre
+  maxShots: null,
+  onUpdate: function (t) {
+    var labels = { idle: 'READY', wait: 'STAND BY…', run: 'RUNNING', done: 'DONE', stopped: 'DONE' };
+    var st = $('c-status');
+    st.textContent = (S.dry && t.phase === 'run') ? 'RUNNING · TAP ON EACH SHOT'
+      : (t.phase === 'stopped' && t.timedOut) ? (t.shots.length ? 'DONE · 5 S WITHOUT A SHOT' : 'NO SHOT DETECTED') : labels[t.phase];
+    st.style.color = (t.phase === 'idle' || t.phase === 'wait') ? 'var(--sand)' : 'var(--ink)';
+    var tm = $('c-time'); tm.textContent = fmt(t.elapsed);
+    tm.classList.toggle('long', t.elapsed >= 10);
+    $('c-count').textContent = String(t.shots.length);
+    $('c-first').textContent = t.shots.length ? fmt(t.shots[0]) : '—';
+    if (t._n !== t.shots.length) { renderSplits($('c-splits'), t.shots); t._n = t.shots.length; }
+    $('c-hint').style.display = t.shots.length ? 'none' : '';
+    $('c-hint').textContent = S.dry
+      ? "Dry-fire mode: press Start, wait for the beep, then tap the timer on every trigger press. Press Stop when you're done."
+      : "Press Start, wait for the beep, then shoot. The mic counts every shot; press Stop when you're done.";
+    var e = $('c-err'); e.textContent = t.err; e.classList.toggle('on', !!t.err);
+    setMain($('c-main'), t.running());
+    $('c-clock').disabled = !(S.dry && t.phase === 'run');
+    $('c-clock').classList.toggle('tap', S.dry && t.phase === 'run');
+  }
+});
+$('c-main').onclick = function () { C.running() ? C.stopRun() : C.start(); };
+$('c-reset').onclick = function () { C.reset(); };
+$('c-clock').addEventListener('pointerdown', function (e) { e.preventDefault(); C.tap(); });
+
+/* ---------- Écran Drills ---------- */
+var dIdx = 0;
+var D = new Timer({
+  par: function () { return DRILLS[dIdx].par; },
+  maxShots: function () { return DRILLS[dIdx].shots; },
+  onUpdate: function (t) {
+    var ex = DRILLS[dIdx];
+    var over = t.elapsed > ex.par;
+    var labels = { idle: 'READY', wait: 'STAND BY…', run: 'RUNNING', done: over ? 'OVER PAR' : 'PASSED · UNDER PAR', stopped: 'STOPPED' };
+    var st = $('d-status');
+    st.textContent = (S.dry && t.phase === 'run') ? 'RUNNING · TAP'
+      : (t.phase === 'stopped' && t.timedOut) ? (t.shots.length ? 'STOPPED · 5 S WITHOUT A SHOT' : 'NO SHOT DETECTED') : labels[t.phase];
+    st.style.color = (t.phase === 'idle' || t.phase === 'wait') ? 'var(--sand)' : 'var(--ink)';
+    $('d-time').textContent = fmt(t.elapsed);
+    var bar = $('d-bar');
+    bar.style.width = (Math.min(t.elapsed / ex.par, 1) * 100).toFixed(1) + '%';
+    bar.classList.toggle('over', over);
+    $('d-count').textContent = t.shots.length + '/' + ex.shots;
+    $('d-first').textContent = t.shots.length ? fmt(t.shots[0]) : '—';
+    if (t._n !== t.shots.length) { renderSplits($('d-splits'), t.shots); t._n = t.shots.length; }
+    var e = $('d-err'); e.textContent = t.err; e.classList.toggle('on', !!t.err);
+    setMain($('d-main'), t.running());
+    $('d-clock').disabled = !(S.dry && t.phase === 'run');
+    $('d-clock').classList.toggle('tap', S.dry && t.phase === 'run');
+  },
+  onFinish: function (t) {
+    var ex = DRILLS[dIdx], time = t.shots[t.shots.length - 1];
+    var prev = R[dIdx];
+    if (!prev || time < prev.t) { R[dIdx] = { t: time, ok: time <= ex.par }; save('shottimer.results', R); }
+    renderList();
+  }
+});
+
+function renderList() {
+  var ok = 0, done = 0, sum = 0, parSum = 0, h = '';
+  DRILLS.forEach(function (ex, i) {
+    var r = R[i]; parSum += ex.par;
+    if (r) { done++; sum += r.t; if (r.ok) ok++; }
+    h += '<button type="button" class="item" data-i="' + i + '">' +
+      '<span class="n">0' + (i + 1) + '</span>' +
+      '<span class="m"><span class="t">' + ex.name + '</span><span class="s">' + ex.meta + '</span></span>' +
+      '<span class="r"><span class="p">PAR ' + fmt(ex.par) + '</span>' +
+      '<span class="res" style="color:' + (r ? (r.ok ? 'var(--ink)' : 'var(--sand)') : 'var(--mute)') + '">' +
+      (r ? fmt(r.t) + (r.ok ? ' ✓' : ' ✗') : '—') + '</span></span></button>';
+  });
+  $('d-items').innerHTML = h;
+  $('d-ok').textContent = ok + '/' + DRILLS.length;
+  $('d-sum').textContent = done ? fmt(sum) + ' s' : '—';
+}
+function openDrill(i) {
+  D.cancel(); dIdx = i;
+  var ex = DRILLS[i];
+  $('d-kicker').textContent = 'DRILL ' + (i + 1) + '/' + DRILLS.length + ' · ' + ex.shots + (ex.shots > 1 ? ' SHOTS' : ' SHOT');
+  $('d-name').textContent = ex.name;
+  $('d-desc').textContent = ex.desc;
+  $('d-parlbl').textContent = 'TOTAL TIME · PAR ' + fmt(ex.par) + ' S';
+  $('d-next').disabled = i === DRILLS.length - 1;
+  $('d-list').classList.remove('on'); $('d-ex').classList.add('on');
+  D._n = -1; D.reset();
+}
+function backToList() {
+  D.cancel(); D.phase = 'idle';
+  $('d-ex').classList.remove('on'); $('d-list').classList.add('on');
+  renderList();
+}
+$('d-items').onclick = function (e) {
+  var b = e.target.closest('.item'); if (b) openDrill(+b.getAttribute('data-i'));
+};
+$('d-back').onclick = backToList;
+$('d-main').onclick = function () { D.running() ? D.stopRun() : D.start(); };
+$('d-reset').onclick = function () { D.reset(); };
+$('d-next').onclick = function () { if (dIdx < DRILLS.length - 1) openDrill(dIdx + 1); };
+$('d-clock').addEventListener('pointerdown', function (e) { e.preventDefault(); D.tap(); });
+$('d-clear').onclick = function () {
+  if (confirm('Clear all Marshall Qual results?')) { R = {}; save('shottimer.results', R); renderList(); }
+};
+
+/* ---------- Réglages ---------- */
+function sensLabel(v) { return (v < 34 ? 'Low' : v < 67 ? 'Medium' : 'High') + ' · ' + v; }
+function renderSettings() {
+  $('s-delay').value = S.delay;
+  $('s-delay-v').textContent = S.delay <= 0 ? 'Instant' : S.delay <= 1.5 ? fmt1(S.delay) + ' s' : '1.5 – ' + fmt1(S.delay) + ' s';
+  $('s-parbeep').checked = S.parBeep;
+  $('s-vol').value = S.vol; $('s-vol-v').textContent = S.vol > 0 ? S.vol + '%' : 'Muted';
+  $('s-tone').value = S.tone;
+  $('s-tone-v').textContent = (S.tone < 1800 ? 'Low' : S.tone <= 2400 ? 'Medium' : 'High') + ' · ' + S.tone + ' Hz';
+  $('s-sens').value = S.sens; $('s-sens-v').textContent = sensLabel(+S.sens);
+  $('s-echo').value = S.echo; $('s-echo-v').textContent = fmt(S.echo / 100) + ' s';
+  $('s-dry').checked = S.dry;
+  $('s-th').style.left = (threshold() * 100).toFixed(1) + '%';
+}
+function setS(k, v) { S[k] = v; save('shottimer.settings', S); renderSettings(); pushParams(); C.o.onUpdate(C); D.o.onUpdate(D); }
+$('s-delay').oninput = function () { setS('delay', +this.value); };
+$('s-vol').oninput = function () { setS('vol', +this.value); };
+$('s-vol').onchange = function () { var c = getCtx(); scheduleBeep(c.currentTime + 0.05); };
+$('s-tone').oninput = function () { setS('tone', +this.value); };
+$('s-tone').onchange = function () { var c = getCtx(); scheduleBeep(c.currentTime + 0.05); };
+$('s-sens').oninput = function () { setS('sens', +this.value); };
+$('s-echo').oninput = function () { setS('echo', +this.value); };
+$('s-parbeep').onchange = function () { setS('parBeep', this.checked); };
+$('s-dry').onchange = function () { setS('dry', this.checked); };
+
+var testing = false, testHits = 0, flashT = 0;
+function stopTest() {
+  testing = false; levelListener = null;
+  if (!active) hitListener = null;
+  $('s-test').textContent = 'TEST THE MIC'; $('s-test').classList.remove('on');
+  $('s-meter').classList.remove('on');
+}
+$('s-test').onclick = function () {
+  if (testing) { stopTest(); return; }
+  if (cal) calStop(false);
+  var err = $('s-err'); err.classList.remove('on');
+  ensureMic().then(function () {
+    pushParams();
+    testing = true; testHits = 0;
+    $('s-hits').textContent = '0 detections';
+    $('s-test').textContent = 'STOP THE TEST'; $('s-test').classList.add('on');
+    $('s-meter').classList.add('on');
+    levelListener = function (l) { $('s-lvl').style.width = Math.min(l * 100, 100).toFixed(1) + '%'; };
+    hitListener = function () {
+      testHits++;
+      $('s-hits').textContent = testHits + (testHits === 1 ? ' detection' : ' detections');
+      var b = $('s-bar'); b.classList.add('hit'); clearTimeout(flashT);
+      flashT = setTimeout(function () { b.classList.remove('hit'); }, 200);
+    };
+  }).catch(function (e) { err.textContent = e.message; err.classList.add('on'); });
+};
+
+/* ---------- Automatic calibration (3 shots) ---------- */
+// 1) ~1.5 s of silence to measure background noise, 2) the shooter fires 3 shots,
+// 3) threshold = half of the weakest shot (at least 2× background noise), converted to sensitivity.
+var CAL_T = {
+  btn: 'CALIBRATE THE MIC', cancel: 'CANCEL', close: 'CLOSE', retry: 'TRY AGAIN',
+  silence: 'Silence…', silenceMsg: 'Don\'t shoot: measuring background noise.',
+  shoot: function (n) { return 'Fire ' + (3 - n) + (3 - n > 1 ? ' shots' : ' shot'); },
+  shootMsg: 'Fire 3 shots at your own pace, at least half a second apart.',
+  done: 'Calibrated', doneMsg: function (s) { return 'Sensitivity set to ' + s + '. The slider has been updated.'; },
+  clamp: ' The shots are very quiet: check that nothing is covering the mic.',
+  noisy: 'Too much background noise to calibrate. Try again when the range is quieter.',
+  timeout: 'Fewer than 3 shots detected in 30 s. Move the iPhone closer or try again.',
+  fail: 'Failed'
+};
+var cal = null;
+function calUI(step, msg, dots, btnLabel) {
+  $('s-calbox').hidden = false;
+  $('s-calstep').textContent = step;
+  $('s-calmsg').textContent = msg;
+  $('s-caldots').querySelectorAll('i').forEach(function (d, i) { d.classList.toggle('on', i < dots); });
+  $('s-calcancel').textContent = btnLabel || CAL_T.cancel;
+}
+function calStop(keepBox) {
+  if (cal) { clearTimeout(cal.timer); cal = null; }
+  if (!testing) levelListener = null;
+  $('s-cal').disabled = false;
+  if (!keepBox) $('s-calbox').hidden = true;
+}
+function calFinish() {
+  var peaks = cal.peaks, noise = cal.noise;
+  var minPeak = Math.min.apply(null, peaks);
+  var th = Math.max(minPeak * 0.5, noise * 2, 0.02);
+  // Inverse of threshold(): th = (0.92 - s*0.0084) / SENS_BOOST
+  var s = Math.round((0.92 - th * SENS_BOOST) / 0.0084);
+  var clamped = s > 100;
+  s = Math.max(0, Math.min(100, s));
+  calStop(true);
+  setS('sens', s);
+  calUI(CAL_T.done, CAL_T.doneMsg(s) + (clamped ? CAL_T.clamp : ''), 3, CAL_T.close);
+}
+function calFail(msg) {
+  calStop(true);
+  calUI(CAL_T.fail, msg, 0, CAL_T.close);
+}
+function calLevel(l) {
+  if (!cal) return;
+  var now = performance.now();
+  if (cal.phase === 'ambient') {
+    cal.amb.push(l);
+    if (now - cal.t0 >= 1500) {
+      var a = cal.amb.slice().sort(function (x, y) { return x - y; });
+      cal.noise = a[Math.floor(a.length * 0.9)] || 0;
+      if (cal.noise > 0.45) { calFail(CAL_T.noisy); return; }
+      cal.floor = Math.max(cal.noise * 3, 0.04);
+      cal.phase = 'shots';
+      calUI(CAL_T.shoot(0), CAL_T.shootMsg, 0);
+      cal.timer = setTimeout(function () { calFail(CAL_T.timeout); }, 30000);
+    }
+    return;
+  }
+  if (l < cal.floor) return;
+  if (now - cal.lastEvt > 350) {               // new shot
+    if (cal.peaks.length === 3) return;
+    cal.peaks.push(l); cal.lastEvt = now;
+    var n = cal.peaks.length;
+    calUI(n < 3 ? CAL_T.shoot(n) : CAL_T.done, CAL_T.shootMsg, n);
+    if (n === 3) setTimeout(function () { if (cal) calFinish(); }, 200);
+  } else if (now - cal.lastEvt < 150) {         // same shot: keep the peak
+    var i = cal.peaks.length - 1;
+    if (l > cal.peaks[i]) cal.peaks[i] = l;
+  }
+}
+$('s-cal').onclick = function () {
+  if (testing) stopTest();
+  if (active) active.stopRun();
+  $('s-err').classList.remove('on');
+  $('s-cal').disabled = true;
+  ensureMic().then(function () {
+    cal = { phase: 'ambient', t0: performance.now(), amb: [], peaks: [], lastEvt: -1e9, noise: 0, floor: 1 };
+    calUI(CAL_T.silence, CAL_T.silenceMsg, 0);
+    levelListener = calLevel;
+  }).catch(function (e) {
+    $('s-cal').disabled = false;
+    $('s-err').textContent = e.message; $('s-err').classList.add('on');
+  });
+};
+$('s-calcancel').onclick = function () { calStop(false); };
+
+$('s-micoff').onclick = function () {
+  if (cal) calStop(false);
+  if (testing) stopTest();
+  if (active) active.stopRun();
+  releaseMic(); // le prochain Départ refait une demande d'accès au micro
+};
+
+/* ---------- Language ---------- */
+document.querySelectorAll('.seg [data-lang]').forEach(function (b) {
+  b.onclick = function () {
+    var l = b.getAttribute('data-lang');
+    if (active) active.stopRun();
+    try { localStorage.setItem('shottimer.lang', l); } catch (e) {}
+    location.href = LANG_FILE[l] + '#reglages';
+  };
+});
+
+/* ---------- Crédits ---------- */
+function showCredits(on) {
+  if (on && testing) stopTest();
+  if (on) calStop(false);
+  $('r-main').classList.toggle('on', !on);
+  $('r-credits').classList.toggle('on', on);
+}
+$('r-open-credits').onclick = function () { showCredits(true); };
+$('r-back').onclick = function () { showCredits(false); };
+
+/* ---------- Navigation ---------- */
+function showTab(name) {
+  if (active) active.stopRun();
+  if (testing && name !== 'reglages') stopTest();
+  if (name !== 'reglages') calStop(false);
+  ['chrono', 'drills', 'reglages'].forEach(function (n) {
+    $('v-' + n).classList.toggle('on', n === name);
+  });
+  document.querySelectorAll('nav.tabs button').forEach(function (b) {
+    if (b.getAttribute('data-tab') === name) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  if (name === 'drills') renderList();
+  if (name === 'reglages') showCredits(false);
+  try { history.replaceState(null, '', '#' + name); } catch (e) {}
+}
+document.querySelectorAll('nav.tabs button').forEach(function (b) {
+  b.onclick = function () { showTab(b.getAttribute('data-tab')); };
+});
+document.addEventListener('visibilitychange', function () {
+  if (document.hidden && active) active.stopRun();
+  if (!document.hidden && wakeLock === null && active) keepAwake(true);
+});
+
+/* ---------- Offline mode: stores the app on the iPhone (see sw.js) ---------- */
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').catch(function () {});
+}
+
+/* ---------- Init ---------- */
+renderSettings();
+renderMicState();
+renderList();
+C._n = -1; C.reset();
+var h = (location.hash || '').slice(1);
+if (h === 'drills' || h === 'reglages') showTab(h);
+})();
+</script>
+</body>
+</html>

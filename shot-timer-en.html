@@ -61,12 +61,22 @@ h1.sm{font-size:36px}
 .stats.c3 .v{font-size:24px}
 
 .hint{margin:16px 24px 0;font-size:14px;line-height:1.45;color:var(--mute)}
-.splits{margin:14px 24px 0;display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
-.splits::-webkit-scrollbar{display:none}
-.chip{flex:none;border:1px solid var(--line);padding:6px 10px;display:flex;flex-direction:column;gap:2px;font-variant-numeric:tabular-nums}
-.chip b{font-size:10px;letter-spacing:.14em;color:var(--mute)}
-.chip span{font-size:14px;font-weight:700}
-.chip em{font-style:normal;font-size:11px;color:var(--sand)}
+/* Small screens (iPhone SE…): compact so 3 rows of shots + buttons fit */
+@media (max-height: 740px) {
+  header.top{padding-top:calc(env(safe-area-inset-top) + 12px)}
+  .clock{margin-top:12px;padding-top:8px}
+  .time,.time.mid,.time.long{font-size:clamp(64px,13vh,150px)}
+  .stats{margin-top:10px}
+  .stats>div{padding:8px 12px;gap:4px}
+  .stats .v{font-size:34px}
+  .splits{margin-top:10px}
+}
+/* Shots: 6 per row, 3 rows max (18 shots) */
+.splits{margin:14px 24px 0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
+.chip{min-width:0;overflow:hidden;border:1px solid var(--line);padding:5px 2px;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center;font-variant-numeric:tabular-nums}
+.chip b{font-size:9px;letter-spacing:.08em;color:var(--mute)}
+.chip span{font-size:clamp(11px,3.4vw,13px);font-weight:700;white-space:nowrap}
+.chip em{font-style:normal;font-size:10px;color:var(--sand);white-space:nowrap}
 
 .grow{flex:1}
 .actions{padding:12px 24px;display:flex;gap:10px;align-items:center}
@@ -333,7 +343,7 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
       </section>
       <section class="group">
         <span class="kicker">VERSION</span>
-        <p class="credit-name">V1.21</p>
+        <p class="credit-name">V1.22</p>
         <p class="desc">Updated on 21 November 2026.</p>
       </section>
     </div>
@@ -370,6 +380,7 @@ var DRILLS = [
 var BEEP_DUR = 0.4;       // durée du bip (s) : plus long = perçu plus fort
 var BEEP_GUARD = 0.06;    // marge après le bip où le micro est ignoré
 var MAX_TIME = 99.99;
+var MAX_SHOTS = 18;       // 3 rows of 6 shots
 var IDLE_TIMEOUT = 5;     // arrêt auto après 5 s sans tir détecté
 
 /* ---------- Stockage ---------- */
@@ -719,12 +730,11 @@ function timeClass(el, v) {
 }
 function renderSplits(el, shots) {
   var h = '';
-  for (var i = 0; i < shots.length; i++) {
+  for (var i = 0; i < shots.length && i < MAX_SHOTS; i++) {
     h += '<div class="chip"><b>#' + (i + 1) + '</b><span>' + fmt(shots[i]) + '</span><em>' +
       (i === 0 ? 'first' : '+' + fmt(shots[i] - shots[i - 1])) + '</em></div>';
   }
   el.innerHTML = h;
-  el.scrollLeft = el.scrollWidth;
 }
 function setMain(btn, running) {
   btn.textContent = running ? 'STOP' : 'START';
@@ -733,8 +743,8 @@ function setMain(btn, running) {
 
 /* ---------- Écran Chrono libre ---------- */
 var C = new Timer({
-  par: function () { return 0; }, // pas de par en chrono libre
-  maxShots: null,
+  par: function () { return 0; }, // no par in free timer
+  maxShots: function () { return MAX_SHOTS; }, // 18 shots max (3 rows of 6), then automatic stop
   onUpdate: function (t) {
     var labels = { idle: 'READY', wait: 'STAND BY…', run: 'RUNNING', done: 'DONE', stopped: 'DONE' };
     var st = $('c-status');

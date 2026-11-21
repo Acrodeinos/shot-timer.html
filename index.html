@@ -292,7 +292,7 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
 
       <section class="tip">
         <b>CONSEIL</b>
-        <p>Avec un casque électronique, garde l'iPhone à la ceinture côté arme : le micro capte mieux le départ que les tirs des postes voisins. Si des coups sont comptés en trop, baisse la sensibilité ou augmente le temps mort.</p>
+        <p>Avec un casque électronique, garde <span class="dev">l'iPhone</span> à la ceinture côté arme : le micro capte mieux le départ que les tirs des postes voisins. Si des coups sont comptés en trop, baisse la sensibilité ou augmente le temps mort.</p>
       </section>
 
       <button type="button" class="rowlink" id="r-open-credits">
@@ -333,7 +333,7 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
       </section>
       <section class="group">
         <span class="kicker">VERSION</span>
-        <p class="credit-name">V1.19</p>
+        <p class="credit-name">V1.20</p>
         <p class="desc">Mise à jour du 21/11/2026.</p>
       </section>
     </div>
@@ -434,7 +434,30 @@ function resetAudio() {
 function micAlive() {
   return !!micStream && micStream.getAudioTracks().some(function (t) { return t.readyState === 'live'; });
 }
-var AUDIO_STUCK = "Le son s'est bloqué après la mise en veille de l'iPhone. Appuie à nouveau sur Départ.";
+/* ---------- Type de téléphone : adapte les messages (et la compensation audio, Android seulement) ---------- */
+var UA = navigator.userAgent || '';
+var IS_IOS = /iPad|iPhone|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+var IS_ANDROID = !IS_IOS && /Android/i.test(UA);
+var DEVICE = IS_IOS ? "l'iPhone" : 'le téléphone';
+var AUDIO_STUCK = "Le son s'est bloqué après la mise en veille " + (IS_IOS ? "de l'iPhone" : 'du téléphone') + ". Appuie à nouveau sur Départ.";
+var MIC_HELP = IS_IOS ? "Autorise-le dans Safari (aA › Réglages du site web › Micro)"
+  : IS_ANDROID ? "Autorise-le dans Chrome : touche l'icône à gauche de l'adresse › Autorisations › Micro (app installée : Paramètres › Applications › Shot Timer › Autorisations)"
+  : "Autorise-le dans les réglages du site de ton navigateur";
+
+// Délai audio du téléphone (s). Android : le haut-parleur et le micro ajoutent souvent 20 à 100 ms,
+// ce qui gonflerait tous les temps. Sur iPhone ce délai est faible : aucune compensation (0).
+function audioLatency() {
+  var clamp = function (v) { return (typeof v === 'number' && isFinite(v)) ? Math.max(0, Math.min(v, 0.25)) : 0; };
+  if (!IS_ANDROID || !ctx) return { out: 0, inp: 0, known: true };
+  var inp = 0;
+  try {
+    var tr = micStream && micStream.getAudioTracks()[0];
+    var st = tr && tr.getSettings ? tr.getSettings() : null;
+    if (st) inp = clamp(st.latency);
+  } catch (e) {}
+  // Juste après sa création, le moteur audio annonce souvent 0 : « known » dit si la vraie valeur est arrivée.
+  return { out: clamp((ctx.outputLatency || 0) + (ctx.baseLatency || 0)), inp: inp, known: (ctx.outputLatency || 0) > 0 };
+}
 
 var WORKLET = "class P extends AudioWorkletProcessor{constructor(){super();this.th=.5;this.dead=.08;this.last=-1e9;this.pk=0;this.n=0;this.port.onmessage=e=>{if(e.data.th!=null)this.th=e.data.th;if(e.data.dead!=null)this.dead=e.data.dead;}}process(inp){const c=inp[0]&&inp[0][0];if(!c)return true;for(let i=0;i<c.length;i++){const a=c[i]<0?-c[i]:c[i];if(a>this.pk)this.pk=a;if(a>=this.th){const t=(currentFrame+i)/sampleRate;if(t-this.last>=this.dead){this.last=t;this.port.postMessage({hit:t,a:a});}}}this.n+=c.length;if(this.n>=1024){this.port.postMessage({lvl:this.pk});this.pk=0;this.n=0;}return true;}}registerProcessor('shot-detector',P);";
 
@@ -454,7 +477,7 @@ function ensureMic() {
   var c = getCtx();
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     return Promise.reject(new Error(location.protocol === 'file:' || !window.isSecureContext
-      ? "Micro indisponible : Safari n'autorise le micro qu'en https ou sur localhost. Active le mode tir à sec, ou sers la page via un petit serveur local."
+      ? "Micro indisponible : le navigateur n'autorise le micro qu'en https ou sur localhost. Active le mode tir à sec, ou sers la page via un petit serveur local."
       : "Micro non pris en charge par ce navigateur."));
   }
   try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
@@ -497,7 +520,7 @@ function ensureMic() {
   }).catch(function (err) {
     micReady = null;
     throw new Error(err && err.name === 'NotAllowedError'
-      ? "Accès au micro refusé. Autorise-le dans Safari (aA › Réglages du site web › Micro) ou active le mode tir à sec."
+      ? "Accès au micro refusé. " + MIC_HELP + ", ou active le mode tir à sec."
       : (err && err.message) || "Impossible d'ouvrir le micro.");
   });
   return micReady;
@@ -566,6 +589,7 @@ Timer.prototype.start = function () {
   this.cancel();
   var c = getCtx();
   this.phase = 'wait'; this.elapsed = 0; this.shots = []; this.err = ''; this.timedOut = false;
+  this.t0 = this.tz = this.tzMic = this.parAt = this.parMic = null;
   active = this;
   this.o.onUpdate(this);
   keepAwake(true);
@@ -580,6 +604,9 @@ Timer.prototype.start = function () {
     self.oscs.push(scheduleBeep(self.t0));
     var par = self.o.par();
     self.parAt = (S.parBeep && par > 0) ? self.t0 + par : null;
+    // Zéro du chrono = moment où le bip SORT du haut-parleur (t0 + délai de sortie, 0 sur iPhone).
+    // Pour le micro, on ajoute le délai d'entrée : un son capté arrive un peu après qu'il a eu lieu.
+    self.setZero();
     if (self.parAt) self.oscs.push(scheduleBeep(self.parAt, Math.round(S.tone * 0.8)));
     hitListener = function (t) { self.hit(t); };
     self.loop();
@@ -601,11 +628,21 @@ Timer.prototype.start = function () {
     ensureMic().then(function () { pushParams(); return audioReady(); }).then(go).catch(function (e) { fail(e.message); });
   }
 };
+// Calcule le zéro du chrono à partir du délai audio (voir audioLatency).
+Timer.prototype.setZero = function () {
+  var lat = audioLatency();
+  this.tz = this.t0 + lat.out;
+  this.tzMic = this.tz + lat.inp;
+  this.parMic = this.parAt ? this.parAt + lat.out + lat.inp : null;
+  this.latOk = lat.known;
+};
 Timer.prototype.loop = function () {
   var self = this;
   var tick = function () {
     if (!ctx) return;
     var now = ctx.currentTime;
+    // Pendant l'attente du bip, affine le délai audio (le navigateur précise sa mesure au démarrage).
+    if (self.phase === 'wait' && now < self.t0 - 0.05) self.setZero();
     if (self.phase === 'wait' && now < self.t0 && performance.now() > self.deadline) {
       // L'horloge audio n'avance pas (moteur audio figé par iOS) : on le jette et on prévient.
       self.cancel(); resetAudio();
@@ -613,9 +650,9 @@ Timer.prototype.loop = function () {
       self.o.onUpdate(self);
       return;
     }
-    if (self.phase === 'wait' && now >= self.t0) self.phase = 'run';
+    if (self.phase === 'wait' && now >= self.tz) self.phase = 'run';
     if (self.phase === 'run') {
-      self.elapsed = Math.min(now - self.t0, MAX_TIME);
+      self.elapsed = Math.min(now - self.tz, MAX_TIME);
       if (self.elapsed >= MAX_TIME) { self.stopRun(); return; }
       var lastShot = self.shots.length ? self.shots[self.shots.length - 1] : 0;
       if (self.elapsed - lastShot >= IDLE_TIMEOUT) { self.timedOut = true; self.stopRun(); return; }
@@ -627,9 +664,9 @@ Timer.prototype.loop = function () {
 };
 Timer.prototype.hit = function (t) {
   if (this.phase !== 'run' && this.phase !== 'wait') return;
-  if (this.t0 == null || t < this.t0 + BEEP_DUR + BEEP_GUARD) return;     // ignore le bip de départ
-  if (this.parAt && t >= this.parAt - 0.01 && t < this.parAt + BEEP_DUR + BEEP_GUARD) return; // ignore le bip de par
-  var s = t - this.t0;
+  if (this.tzMic == null || t < this.tzMic + BEEP_DUR + BEEP_GUARD) return;     // ignore le bip de départ
+  if (this.parMic && t >= this.parMic - 0.01 && t < this.parMic + BEEP_DUR + BEEP_GUARD) return; // ignore le bip de par
+  var s = t - this.tzMic;
   var last = this.shots[this.shots.length - 1];
   if (last != null && s <= last) return;
   this.shots.push(s);
@@ -640,8 +677,8 @@ Timer.prototype.hit = function (t) {
 Timer.prototype.tap = function () { // mode tir à sec
   if (!S.dry || this.phase !== 'run') return;
   var t = ctx.currentTime;
-  if (t < this.t0 + 0.05) return;
-  var s = t - this.t0, last = this.shots[this.shots.length - 1];
+  if (t < this.tz + 0.05) return;
+  var s = t - this.tz, last = this.shots[this.shots.length - 1];
   if (last != null && s - last < 0.04) return;
   this.shots.push(s);
   var max = this.o.maxShots && this.o.maxShots();
@@ -658,7 +695,7 @@ Timer.prototype.finish = function () {
 };
 Timer.prototype.cancelFuturePar = function () { /* les oscillateurs sont stoppés dans cancel() */ };
 Timer.prototype.stopRun = function () {
-  var wasWait = this.phase === 'wait' && (this.t0 == null || !ctx || ctx.currentTime < this.t0);
+  var wasWait = this.phase === 'wait' && (this.tz == null || !ctx || ctx.currentTime < this.tz);
   this.cancel();
   if (wasWait) { this.phase = 'idle'; this.elapsed = 0; this.shots = []; }
   else {
@@ -857,7 +894,7 @@ var CAL_T = {
   done: 'Calibré', doneMsg: function (s) { return 'Sensibilité réglée sur ' + s + '. Le curseur a été mis à jour.'; },
   clamp: ' Les tirs sont très faibles : vérifie que le micro n\'est pas couvert.',
   noisy: 'Bruit ambiant trop fort pour calibrer. Réessaie quand le stand est plus calme.',
-  timeout: 'Moins de 3 tirs détectés en 30 s. Rapproche l\'iPhone ou réessaie.',
+  timeout: 'Moins de 3 tirs détectés en 30 s. Rapproche ' + DEVICE + ' ou réessaie.',
   fail: 'Échec'
 };
 var cal = null;
@@ -992,7 +1029,9 @@ function wakeAudio() {
 window.addEventListener('pageshow', wakeAudio);
 window.addEventListener('focus', wakeAudio);
 
-/* ---------- Mode hors ligne : copie l'app dans l'iPhone (voir sw.js) ---------- */
+document.querySelectorAll('.dev').forEach(function (el) { el.textContent = DEVICE; });
+
+/* ---------- Mode hors ligne : copie l'app dans le téléphone (voir sw.js) ---------- */
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(function () {});
 }

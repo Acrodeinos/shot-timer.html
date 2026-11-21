@@ -292,7 +292,7 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
 
       <section class="tip">
         <b>TIP</b>
-        <p>With electronic ear protection, keep the iPhone on your belt on your gun side: the mic picks up your shots better than those from the next lanes. If extra shots are counted, lower the sensitivity or raise the echo rejection delay.</p>
+        <p>With electronic ear protection, keep <span class="dev">the iPhone</span> on your belt on your gun side: the mic picks up your shots better than those from the next lanes. If extra shots are counted, lower the sensitivity or raise the echo rejection delay.</p>
       </section>
 
       <button type="button" class="rowlink" id="r-open-credits">
@@ -333,7 +333,7 @@ nav.tabs button[aria-current=page]{color:var(--ink);box-shadow:inset 0 2px 0 var
       </section>
       <section class="group">
         <span class="kicker">VERSION</span>
-        <p class="credit-name">V1.19</p>
+        <p class="credit-name">V1.20</p>
         <p class="desc">Updated on 21 November 2026.</p>
       </section>
     </div>
@@ -431,7 +431,30 @@ function resetAudio() {
 function micAlive() {
   return !!micStream && micStream.getAudioTracks().some(function (t) { return t.readyState === 'live'; });
 }
-var AUDIO_STUCK = "Sound got stuck after the iPhone went to sleep. Press Start again.";
+/* ---------- Phone type: adapts the messages (and audio compensation, Android only) ---------- */
+var UA = navigator.userAgent || '';
+var IS_IOS = /iPad|iPhone|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+var IS_ANDROID = !IS_IOS && /Android/i.test(UA);
+var DEVICE = IS_IOS ? 'the iPhone' : 'the phone';
+var AUDIO_STUCK = "Sound got stuck after " + DEVICE + " went to sleep. Press Start again.";
+var MIC_HELP = IS_IOS ? "Allow it in Safari (aA › Website Settings › Microphone)"
+  : IS_ANDROID ? "Allow it in Chrome: tap the icon left of the address › Permissions › Microphone (installed app: Settings › Apps › Shot Timer › Permissions)"
+  : "Allow it in your browser's site settings";
+
+// Phone audio delay (s). Android: the speaker and mic often add 20 to 100 ms,
+// which would inflate every time. On iPhone the delay is small: no compensation (0).
+function audioLatency() {
+  var clamp = function (v) { return (typeof v === 'number' && isFinite(v)) ? Math.max(0, Math.min(v, 0.25)) : 0; };
+  if (!IS_ANDROID || !ctx) return { out: 0, inp: 0, known: true };
+  var inp = 0;
+  try {
+    var tr = micStream && micStream.getAudioTracks()[0];
+    var st = tr && tr.getSettings ? tr.getSettings() : null;
+    if (st) inp = clamp(st.latency);
+  } catch (e) {}
+  // Right after it's created, the audio engine often reports 0: "known" says whether the real value has arrived.
+  return { out: clamp((ctx.outputLatency || 0) + (ctx.baseLatency || 0)), inp: inp, known: (ctx.outputLatency || 0) > 0 };
+}
 
 var WORKLET = "class P extends AudioWorkletProcessor{constructor(){super();this.th=.5;this.dead=.08;this.last=-1e9;this.pk=0;this.n=0;this.port.onmessage=e=>{if(e.data.th!=null)this.th=e.data.th;if(e.data.dead!=null)this.dead=e.data.dead;}}process(inp){const c=inp[0]&&inp[0][0];if(!c)return true;for(let i=0;i<c.length;i++){const a=c[i]<0?-c[i]:c[i];if(a>this.pk)this.pk=a;if(a>=this.th){const t=(currentFrame+i)/sampleRate;if(t-this.last>=this.dead){this.last=t;this.port.postMessage({hit:t,a:a});}}}this.n+=c.length;if(this.n>=1024){this.port.postMessage({lvl:this.pk});this.pk=0;this.n=0;}return true;}}registerProcessor('shot-detector',P);";
 
@@ -451,7 +474,7 @@ function ensureMic() {
   var c = getCtx();
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     return Promise.reject(new Error(location.protocol === 'file:' || !window.isSecureContext
-      ? "Mic unavailable: Safari only allows the mic over https or on localhost. Turn on dry-fire mode, or serve the page from a local server."
+      ? "Mic unavailable: the browser only allows the mic over https or on localhost. Turn on dry-fire mode, or serve the page from a local server."
       : "This browser doesn't support the mic."));
   }
   try { if (navigator.audioSession) navigator.audioSession.type = 'play-and-record'; } catch (e) {}
@@ -494,7 +517,7 @@ function ensureMic() {
   }).catch(function (err) {
     micReady = null;
     throw new Error(err && err.name === 'NotAllowedError'
-      ? "Mic access denied. Allow it in Safari (aA › Website Settings › Microphone) or turn on dry-fire mode."
+      ? "Mic access denied. " + MIC_HELP + ", or turn on dry-fire mode."
       : (err && err.message) || "Couldn't open the mic.");
   });
   return micReady;
@@ -563,6 +586,7 @@ Timer.prototype.start = function () {
   this.cancel();
   var c = getCtx();
   this.phase = 'wait'; this.elapsed = 0; this.shots = []; this.err = ''; this.timedOut = false;
+  this.t0 = this.tz = this.tzMic = this.parAt = this.parMic = null;
   active = this;
   this.o.onUpdate(this);
   keepAwake(true);
@@ -577,6 +601,9 @@ Timer.prototype.start = function () {
     self.oscs.push(scheduleBeep(self.t0));
     var par = self.o.par();
     self.parAt = (S.parBeep && par > 0) ? self.t0 + par : null;
+    // Timer zero = when the beep LEAVES the speaker (t0 + output delay, 0 on iPhone).
+    // For the mic, add the input delay: a captured sound arrives a bit after it happened.
+    self.setZero();
     if (self.parAt) self.oscs.push(scheduleBeep(self.parAt, Math.round(S.tone * 0.8)));
     hitListener = function (t) { self.hit(t); };
     self.loop();
@@ -598,11 +625,21 @@ Timer.prototype.start = function () {
     ensureMic().then(function () { pushParams(); return audioReady(); }).then(go).catch(function (e) { fail(e.message); });
   }
 };
+// Computes the timer zero from the audio delay (see audioLatency).
+Timer.prototype.setZero = function () {
+  var lat = audioLatency();
+  this.tz = this.t0 + lat.out;
+  this.tzMic = this.tz + lat.inp;
+  this.parMic = this.parAt ? this.parAt + lat.out + lat.inp : null;
+  this.latOk = lat.known;
+};
 Timer.prototype.loop = function () {
   var self = this;
   var tick = function () {
     if (!ctx) return;
     var now = ctx.currentTime;
+    // While waiting for the beep, refine the audio delay (the browser sharpens its estimate at startup).
+    if (self.phase === 'wait' && now < self.t0 - 0.05) self.setZero();
     if (self.phase === 'wait' && now < self.t0 && performance.now() > self.deadline) {
       // The audio clock isn't moving (engine frozen by iOS): throw it away and tell the user.
       self.cancel(); resetAudio();
@@ -610,9 +647,9 @@ Timer.prototype.loop = function () {
       self.o.onUpdate(self);
       return;
     }
-    if (self.phase === 'wait' && now >= self.t0) self.phase = 'run';
+    if (self.phase === 'wait' && now >= self.tz) self.phase = 'run';
     if (self.phase === 'run') {
-      self.elapsed = Math.min(now - self.t0, MAX_TIME);
+      self.elapsed = Math.min(now - self.tz, MAX_TIME);
       if (self.elapsed >= MAX_TIME) { self.stopRun(); return; }
       var lastShot = self.shots.length ? self.shots[self.shots.length - 1] : 0;
       if (self.elapsed - lastShot >= IDLE_TIMEOUT) { self.timedOut = true; self.stopRun(); return; }
@@ -624,9 +661,9 @@ Timer.prototype.loop = function () {
 };
 Timer.prototype.hit = function (t) {
   if (this.phase !== 'run' && this.phase !== 'wait') return;
-  if (this.t0 == null || t < this.t0 + BEEP_DUR + BEEP_GUARD) return;     // ignore le bip de départ
-  if (this.parAt && t >= this.parAt - 0.01 && t < this.parAt + BEEP_DUR + BEEP_GUARD) return; // ignore le bip de par
-  var s = t - this.t0;
+  if (this.tzMic == null || t < this.tzMic + BEEP_DUR + BEEP_GUARD) return;     // ignore the start beep
+  if (this.parMic && t >= this.parMic - 0.01 && t < this.parMic + BEEP_DUR + BEEP_GUARD) return; // ignore the par beep
+  var s = t - this.tzMic;
   var last = this.shots[this.shots.length - 1];
   if (last != null && s <= last) return;
   this.shots.push(s);
@@ -637,8 +674,8 @@ Timer.prototype.hit = function (t) {
 Timer.prototype.tap = function () { // mode tir à sec
   if (!S.dry || this.phase !== 'run') return;
   var t = ctx.currentTime;
-  if (t < this.t0 + 0.05) return;
-  var s = t - this.t0, last = this.shots[this.shots.length - 1];
+  if (t < this.tz + 0.05) return;
+  var s = t - this.tz, last = this.shots[this.shots.length - 1];
   if (last != null && s - last < 0.04) return;
   this.shots.push(s);
   var max = this.o.maxShots && this.o.maxShots();
@@ -655,7 +692,7 @@ Timer.prototype.finish = function () {
 };
 Timer.prototype.cancelFuturePar = function () { /* les oscillateurs sont stoppés dans cancel() */ };
 Timer.prototype.stopRun = function () {
-  var wasWait = this.phase === 'wait' && (this.t0 == null || !ctx || ctx.currentTime < this.t0);
+  var wasWait = this.phase === 'wait' && (this.tz == null || !ctx || ctx.currentTime < this.tz);
   this.cancel();
   if (wasWait) { this.phase = 'idle'; this.elapsed = 0; this.shots = []; }
   else {
@@ -854,7 +891,7 @@ var CAL_T = {
   done: 'Calibrated', doneMsg: function (s) { return 'Sensitivity set to ' + s + '. The slider has been updated.'; },
   clamp: ' The shots are very quiet: check that nothing is covering the mic.',
   noisy: 'Too much background noise to calibrate. Try again when the range is quieter.',
-  timeout: 'Fewer than 3 shots detected in 30 s. Move the iPhone closer or try again.',
+  timeout: 'Fewer than 3 shots detected in 30 s. Move ' + DEVICE + ' closer or try again.',
   fail: 'Failed'
 };
 var cal = null;
@@ -989,7 +1026,9 @@ function wakeAudio() {
 window.addEventListener('pageshow', wakeAudio);
 window.addEventListener('focus', wakeAudio);
 
-/* ---------- Offline mode: stores the app on the iPhone (see sw.js) ---------- */
+document.querySelectorAll('.dev').forEach(function (el) { el.textContent = DEVICE; });
+
+/* ---------- Offline mode: stores the app on the phone (see sw.js) ---------- */
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(function () {});
 }
